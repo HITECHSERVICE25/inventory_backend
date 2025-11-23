@@ -4,16 +4,41 @@ const  logger  = require('../utils/logger');
 const Product = require('../models/Product');
 
 class TechnicianService {
+  // async createTechnician(technicianData) {
+  //   try {
+  //     const technician = await Technician.create(technicianData);
+  //     logger.info('Technician created', { technicianId: technician._id });
+  //     return technician;
+  //   } catch (error) {
+  //     logger.error('Technician creation failed', { error: error.message });
+  //     throw error;
+  //   }
+  // }
+
   async createTechnician(technicianData) {
-    try {
-      const technician = await Technician.create(technicianData);
-      logger.info('Technician created', { technicianId: technician._id });
-      return technician;
-    } catch (error) {
-      logger.error('Technician creation failed', { error: error.message });
-      throw error;
+  try {
+    const technician = await Technician.create(technicianData);
+    logger.info('Technician created', { technicianId: technician._id });
+    return technician;
+  } catch (error) {
+    logger.error('Technician creation failed', { error: error.message });
+
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+
+      // Throw a clean error
+      const customError = new Error(`${field} already exists`);
+      customError.statusCode = 400;
+      throw customError;
     }
+
+    // For all other errors
+    error.statusCode = 500;
+    throw error;
   }
+}
+
 
   async getTechnicianById(id) {
     try {
@@ -34,8 +59,21 @@ class TechnicianService {
       logger.info('Technician updated', { technicianId: id });
       return technician;
     } catch (error) {
-      logger.error('Technician update failed', { technicianId: id, error: error.message });
-      throw error;
+      logger.error('Technician creation failed', { error: error.message });
+
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+
+      // Throw a clean error
+      const customError = new Error(`${field} already exists`);
+      customError.statusCode = 400;
+      throw customError;
+    }
+
+    // For all other errors
+    error.statusCode = 500;
+    throw error;
     }
   }
 
