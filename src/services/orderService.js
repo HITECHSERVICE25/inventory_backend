@@ -137,7 +137,9 @@ class OrderService {
     // Update products and pricing
     order.products = completionData.products;
     order.miscellaneousCost = completionData.miscellaneousCost;
-    order.discountPercentage = completionData.discountPercentage;
+    order.fittingCost = completionData.fittingCost;
+    order.discountPercentage = completionData.productDiscountPercentage;
+    order.miscDiscountPercentage = completionData.miscDiscountPercentage;
     order.status = 'pending-approval';
     
     await this.calculateFinancials(order);
@@ -165,133 +167,15 @@ class OrderService {
     
   }
 
-//   async calculateFinancials(order) {
-//   try {
-//     // Safeguard: Ensure products array exists
-//     const products = order.products || [];
-//     let subtotal = 0;
-
-//     // Calculate subtotal
-//     for (const item of products) {
-//       const product = await Product.findById(item.product);
-      
-//       // Convert to numbers with fallbacks
-//       const price = Number(product?.price) || 0;
-//       const quantity = Number(item.quantity) || 0;
-      
-//       subtotal += price * quantity;
-//     }
-
-//     // Convert inputs with proper validation
-//     const miscellaneousCost = Number(order.miscellaneousCost) || 0;
-//     let discountPercentage = Number(order.discountPercentage) || 0;
-    
-//     // Ensure discount is between 0-100
-//     discountPercentage = Math.max(0, Math.min(100, discountPercentage));
-
-//     // Calculate financials
-//     const totalAmount = subtotal + miscellaneousCost;
-//     const discountAmount = totalAmount * (discountPercentage / 100);
-//     const netAmount = totalAmount - discountAmount;
-
-//     // Calculate cuts (adjust percentages as needed)
-//     const technicianCutPercentage = 70; // Example: 70% to technician
-//     const technicianCut = netAmount * (technicianCutPercentage / 100);
-//     const companyCut = netAmount - technicianCut;
-
-//     // Assign with final validation
-//     order.subtotal = subtotal;
-//     order.totalAmount = isNaN(totalAmount) ? 0 : totalAmount;
-//     order.discountAmount = isNaN(discountAmount) ? 0 : discountAmount;
-//     order.netAmount = isNaN(netAmount) ? 0 : netAmount;
-//     order.technicianCut = isNaN(technicianCut) ? 0 : technicianCut;
-//     order.companyCut = isNaN(companyCut) ? 0 : companyCut;
-
-//   } catch (error) {
-//     console.error("Error in calculateFinancials:", error);
-//     // Fallback to zero values
-//     order.subtotal = 0;
-//     order.totalAmount = 0;
-//     // ... other fields
-//   }
-// }
-
-//   async approveDiscount(orderId, userId) {
-//     const order = await Order.findByIdAndUpdate(
-//       orderId,
-//       { 
-//         discountApproved: true,
-//         discountApprovedBy: userId,
-//         status: 'completed' 
-//       },
-//       { new: true }
-//     );
-    
-//     await this.calculateFinancials(order);
-//     return order.save();
-//   }
-
-
-// async calculateFinancials(order) {
-//     try {
-//       // Calculate subtotal from products
-//       const products = order.products || [];
-//       let subtotal = order.installationCharge;
-
-//       for (const item of products) {
-//         const product = await Product.findById(item.product);
-//         const price = Number(product?.price) || 0;
-//         const quantity = Number(item.quantity) || 0;
-//         subtotal += (price * quantity);
-//       }
-
-//       // Process financial values
-//       const miscellaneousCost = Number(order.miscellaneousCost) || 0;
-//       let discountPercentage = Number(order.discountPercentage) || 0;
-//       discountPercentage = Math.max(0, Math.min(100, discountPercentage));
-
-//       const totalAmount = subtotal + miscellaneousCost;
-//       const discountAmount = totalAmount * (discountPercentage / 100);
-//       const netAmount = totalAmount - discountAmount;
-
-//       // Calculate discount responsibility
-//       const discountSplit = order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
-//       const ownerDiscountShare = discountAmount * (discountSplit.ownerPercentage / 100);
-//       const techDiscountShare = discountAmount * (discountSplit.technicianPercentage / 100);
-
-//       // Calculate cuts with discount responsibility
-//       const technicianCutPercentage = 70; // Base technician percentage
-//       const baseTechnicianCut = netAmount * (technicianCutPercentage / 100);
-//       const technicianCut = baseTechnicianCut - techDiscountShare;
-//       const companyCut = netAmount - technicianCut;
-
-//       // Assign values
-//       order.subtotal = subtotal;
-//       order.totalAmount = isNaN(totalAmount) ? 0 : totalAmount;
-//       order.discountAmount = isNaN(discountAmount) ? 0 : discountAmount;
-//       order.netAmount = isNaN(netAmount) ? 0 : netAmount;
-//       order.technicianCut = isNaN(technicianCut) ? 0 : technicianCut;
-//       order.companyCut = isNaN(companyCut) ? 0 : companyCut;
-//       order.outstandingAmount = netAmount;
-
-//     } catch (error) {
-//       logger.error("Error in calculateFinancials:", error);
-//       // Fallback to zero values
-//       order.subtotal = 0;
-//       order.totalAmount = 0;
-//       order.discountAmount = 0;
-//       order.netAmount = 0;
-//       order.technicianCut = 0;
-//       order.companyCut = 0;
-//       order.outstandingAmount = 0;
-//     }
-//   }
-
-
 // async calculateFinancials(order) {
 //   try {
+//     console.log("\n========== FINANCIAL CALCULATION STARTED ==========");
+
 //     let subtotal = Number(order.installationCharge) || 0;
 //     let technicianCommissionTotal = 0;
+
+//     console.log("➡ Installation Charge:", order.installationCharge);
+//     console.log("➡ Initial Subtotal:", subtotal);
 
 //     // ✅ Calculate subtotal & technician commission
 //     for (const item of order.products) {
@@ -301,53 +185,90 @@ class OrderService {
 //       const price = Number(item.salePrice ?? product.price) || 0;
 //       const qty = Number(item.quantity) || 0;
 
+//       console.log("\n---- PRODUCT LINE ----");
+//       console.log("Product:", product.name);
+//       console.log("Sale Price Used:", price);
+//       console.log("Quantity:", qty);
+
 //       subtotal += price * qty;
 
-//       // ✅ Fetch technician commission if exists
+//       // ✅ Fetch technician commission for that product
 //       const agreement = await CommissionAgreement.findOne({
 //         technician: order.technician,
 //         product: item.product
 //       });
 
 //       if (agreement) {
-//         technicianCommissionTotal += agreement.amount * qty;
+//         const commission = agreement.amount * qty;
+//         technicianCommissionTotal += commission;
+//         console.log("Commission Found: ", agreement.amount, " x ", qty, " =", commission);
+//       } else {
+//         console.log("No commission agreement found");
 //       }
+
+//       console.log("Updated subtotal:", subtotal);
+//       console.log("Total Technician Commission So Far:", technicianCommissionTotal);
 //     }
 
 //     const miscellaneousCost = Number(order.miscellaneousCost) || 0;
 //     const totalAmount = subtotal + miscellaneousCost;
+
+//     console.log("\n➡ Miscellaneous Cost:", miscellaneousCost);
+//     console.log("➡ Total Amount (Subtotal + Misc):", totalAmount);
 
 //     // ✅ Discount calculations
 //     const discountPercentage = Math.max(0, Math.min(100, Number(order.discountPercentage) || 0));
 //     const discountAmount = totalAmount * (discountPercentage / 100);
 //     const netAmount = totalAmount - discountAmount;
 
+//     console.log("\n➡ Discount %:", discountPercentage);
+//     console.log("➡ Discount Amount:", discountAmount);
+//     console.log("➡ Net Amount (After Discount):", netAmount);
+
 //     // ✅ Discount split handling
 //     const split = order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
 //     const ownerDiscountShare = discountAmount * (split.ownerPercentage / 100);
 //     const techDiscountShare = discountAmount * (split.technicianPercentage / 100);
 
-//     // ✅ TECHNICIAN CUT = Service + Commission − Share of Discount
+//     console.log("\n➡ Discount Split:", split);
+//     console.log("Owner Discount Share:", ownerDiscountShare);
+//     console.log("Technician Discount Share:", techDiscountShare);
+
+//     // ✅ TECHNICIAN CUT = Service + Commission − Discount Share
 //     const technician = await Technician.findById(order.technician);
 //     const serviceRate = Number(technician?.serviceRate) || 0;
 
+//     console.log("\n➡ Technician Service Charge:", serviceRate);
+
 //     let technicianCut = (serviceRate + technicianCommissionTotal);
+//     console.log("Technician Cut Before Discount:", technicianCut);
 
-//     // ✅ COMPANY CUT = NetAmount − Technician Cut
+//     technicianCut -= techDiscountShare;
+//     console.log("Technician Cut After Tech Discount Share:", technicianCut);
+
+//     // ✅ COMPANY CUT = TotalAmount − Technician Cut − Owner Discount Share
 //     let companyCut = totalAmount - technicianCut;
-
 //     companyCut -= ownerDiscountShare;
-//     technicianCut -=  techDiscountShare;
 
+//     console.log("\n➡ Company Cut After Discount Share:", companyCut);
 
-//     // Assign final values
 //     order.subtotal = subtotal;
 //     order.totalAmount = totalAmount;
 //     order.discountAmount = discountAmount;
 //     order.netAmount = netAmount;
 //     order.technicianCut = technicianCut < 0 ? 0 : technicianCut;
 //     order.companyCut = companyCut < 0 ? 0 : companyCut;
-//     order.outstandingAmount = netAmount - technicianCut;
+//     order.outstandingAmount = netAmount - order.technicianCut;
+
+//     console.log("\n========== FINAL VALUES ==========");
+//     console.log("Subtotal:", order.subtotal);
+//     console.log("Total Amount:", order.totalAmount);
+//     console.log("Discount Amount:", order.discountAmount);
+//     console.log("Net Amount:", order.netAmount);
+//     console.log("Technician Cut:", order.technicianCut);
+//     console.log("Company Cut:", order.companyCut);
+//     console.log("Outstanding Amount:", order.outstandingAmount);
+//     console.log("========== CALCULATION COMPLETE ==========\n");
 
 //   } catch (error) {
 //     logger.error("Error in calculateFinancials:", error);
@@ -363,32 +284,186 @@ class OrderService {
 //   }
 // }
 
+
+// async calculateFinancials(order) {
+//   try {
+//     console.log("\n========== FINANCIAL CALCULATION STARTED ==========");
+
+//     let productSubtotal = Number(order.installationCharge) || 0;
+//     let technicianCommissionTotal = 0;
+
+//     // -------------------------
+//     // PRODUCT + INSTALLATION
+//     // -------------------------
+//     for (const item of order.products) {
+//       const product = await Product.findById(item.product);
+//       if (!product) continue;
+
+//       const price = Number(item.salePrice ?? product.price) || 0;
+//       const qty = Number(item.quantity) || 0;
+
+//       productSubtotal += price * qty;
+
+//       const agreement = await CommissionAgreement.findOne({
+//         technician: order.technician,
+//         product: item.product
+//       });
+
+//       if (agreement) {
+//         technicianCommissionTotal += agreement.amount * qty;
+//       }
+//     }
+
+//     // -------------------------
+//     // FITTING CHARGE (100% TECHNICIAN)
+//     // -------------------------
+//     const fittingCharge = Number(order.fittingCost) || 0;
+
+//     // -------------------------
+//     // PRODUCT DISCOUNT
+//     // -------------------------
+//     const productDiscountPct = Math.max(
+//       0,
+//       Math.min(100, Number(order.discountPercentage) || 0)
+//     );
+
+//     const productDiscountAmount =
+//       productSubtotal * (productDiscountPct / 100);
+
+//     const productNetAmount =
+//       productSubtotal - productDiscountAmount;
+
+//     const productSplit =
+//       order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
+
+//     const ownerProductDiscount =
+//       productDiscountAmount * (productSplit.ownerPercentage / 100);
+
+//     const techProductDiscount =
+//       productDiscountAmount * (productSplit.technicianPercentage / 100);
+
+//     // -------------------------
+//     // MISCELLANEOUS COST
+//     // -------------------------
+//     const miscCost = Number(order.miscellaneousCost) || 0;
+
+//     const miscDiscountPct = Math.max(
+//       0,
+//       Math.min(100, Number(order.miscDiscountPercentage) || 0)
+//     );
+
+//     const miscDiscountAmount =
+//       miscCost * (miscDiscountPct / 100);
+
+//     const miscNetAmount =
+//       miscCost - miscDiscountAmount;
+
+//     const miscSplit =
+//       order.miscDiscountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
+
+//     const ownerMiscDiscount =
+//       miscDiscountAmount * (miscSplit.ownerPercentage / 100);
+
+//     const techMiscDiscount =
+//       miscDiscountAmount * (miscSplit.technicianPercentage / 100);
+
+//     // -------------------------
+//     // TECHNICIAN CUT
+//     // -------------------------
+//     const technician = await Technician.findById(order.technician);
+//     const serviceRate = Number(technician?.serviceRate) || 0;
+
+//     let technicianCut =
+//       serviceRate +
+//       technicianCommissionTotal +
+//       fittingCharge; // 👈 full fitting charge
+
+//     technicianCut -= techProductDiscount;
+//     technicianCut -= techMiscDiscount;
+
+//     // -------------------------
+//     // COMPANY CUT
+//     // -------------------------
+//     let companyCut =
+//       productSubtotal +
+//       miscCost -
+//       technicianCommissionTotal -
+//       fittingCharge;
+
+//     companyCut -= ownerProductDiscount;
+//     companyCut -= ownerMiscDiscount;
+
+//     // -------------------------
+//     // FINAL TOTALS
+//     // -------------------------
+//     const subtotal =
+//       productSubtotal + miscCost + fittingCharge;
+
+//     const totalDiscount =
+//       productDiscountAmount + miscDiscountAmount;
+
+//     const netAmount =
+//       subtotal - totalDiscount;
+
+//     order.subtotal = subtotal;
+//     order.totalAmount = subtotal;
+//     order.discountAmount = totalDiscount;
+//     order.netAmount = netAmount;
+//     order.technicianCut = Math.max(0, technicianCut);
+//     order.companyCut = Math.max(0, companyCut);
+//     order.outstandingAmount =
+//       netAmount - order.technicianCut;
+
+//     console.log("\n========== CALCULATION COMPLETE ==========");
+//   } catch (error) {
+//     logger.error("Error in calculateFinancials:", error);
+
+//     order.subtotal = 0;
+//     order.totalAmount = 0;
+//     order.discountAmount = 0;
+//     order.netAmount = 0;
+//     order.technicianCut = 0;
+//     order.companyCut = 0;
+//     order.outstandingAmount = 0;
+//   }
+// }
+
 async calculateFinancials(order) {
   try {
-    console.log("\n========== FINANCIAL CALCULATION STARTED ==========");
+    console.log("\n========== FINANCIAL CALCULATION START ==========");
+    console.log("ORDER ID:", order._id?.toString());
 
-    let subtotal = Number(order.installationCharge) || 0;
+    /* -------------------- INIT -------------------- */
+    let productSubtotal = Number(order.installationCharge) || 0;
     let technicianCommissionTotal = 0;
 
-    console.log("➡ Installation Charge:", order.installationCharge);
-    console.log("➡ Initial Subtotal:", subtotal);
+    console.log("\n[INIT]");
+    console.log("Installation charge:", Number(order.installationCharge) || 0);
+    console.log("Starting productSubtotal:", productSubtotal);
 
-    // ✅ Calculate subtotal & technician commission
+    /* -------------------- PRODUCTS -------------------- */
     for (const item of order.products) {
+      console.log("\n[PRODUCT ITEM]");
+      console.log("Raw item:", item);
+
       const product = await Product.findById(item.product);
-      if (!product) continue;
+      if (!product) {
+        console.warn("Product not found:", item.product);
+        continue;
+      }
 
       const price = Number(item.salePrice ?? product.price) || 0;
       const qty = Number(item.quantity) || 0;
+      const lineTotal = price * qty;
 
-      console.log("\n---- PRODUCT LINE ----");
       console.log("Product:", product.name);
-      console.log("Sale Price Used:", price);
-      console.log("Quantity:", qty);
+      console.log("Price:", price);
+      console.log("Qty:", qty);
+      console.log("Line total:", lineTotal);
 
-      subtotal += price * qty;
+      productSubtotal += lineTotal;
+      console.log("Updated productSubtotal:", productSubtotal);
 
-      // ✅ Fetch technician commission for that product
       const agreement = await CommissionAgreement.findOne({
         technician: order.technician,
         product: item.product
@@ -397,79 +472,143 @@ async calculateFinancials(order) {
       if (agreement) {
         const commission = agreement.amount * qty;
         technicianCommissionTotal += commission;
-        console.log("Commission Found: ", agreement.amount, " x ", qty, " =", commission);
-      } else {
-        console.log("No commission agreement found");
-      }
 
-      console.log("Updated subtotal:", subtotal);
-      console.log("Total Technician Commission So Far:", technicianCommissionTotal);
+        console.log("Commission rate:", agreement.amount);
+        console.log("Commission added:", commission);
+      } else {
+        console.log("No commission agreement");
+      }
     }
 
-    const miscellaneousCost = Number(order.miscellaneousCost) || 0;
-    const totalAmount = subtotal + miscellaneousCost;
+    console.log("\n[PRODUCT TOTAL]");
+    console.log("Final productSubtotal:", productSubtotal);
+    console.log("Total technician commission:", technicianCommissionTotal);
 
-    console.log("\n➡ Miscellaneous Cost:", miscellaneousCost);
-    console.log("➡ Total Amount (Subtotal + Misc):", totalAmount);
+    /* -------------------- FITTING -------------------- */
+    const fittingCharge = Number(order.fittingCost) || 0;
+    console.log("\n[FITTING]");
+    console.log("Fitting charge (100% technician):", fittingCharge);
 
-    // ✅ Discount calculations
-    const discountPercentage = Math.max(0, Math.min(100, Number(order.discountPercentage) || 0));
-    const discountAmount = totalAmount * (discountPercentage / 100);
-    const netAmount = totalAmount - discountAmount;
+    /* -------------------- PRODUCT DISCOUNT -------------------- */
+    const productDiscountPct = Math.max(
+      0,
+      Math.min(100, Number(order.discountPercentage) || 0)
+    );
 
-    console.log("\n➡ Discount %:", discountPercentage);
-    console.log("➡ Discount Amount:", discountAmount);
-    console.log("➡ Net Amount (After Discount):", netAmount);
+    const productDiscountAmount =
+      productSubtotal * (productDiscountPct / 100);
 
-    // ✅ Discount split handling
-    const split = order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
-    const ownerDiscountShare = discountAmount * (split.ownerPercentage / 100);
-    const techDiscountShare = discountAmount * (split.technicianPercentage / 100);
+    const productSplit =
+      order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
 
-    console.log("\n➡ Discount Split:", split);
-    console.log("Owner Discount Share:", ownerDiscountShare);
-    console.log("Technician Discount Share:", techDiscountShare);
+    const ownerProductDiscount =
+      productDiscountAmount * (productSplit.ownerPercentage / 100);
 
-    // ✅ TECHNICIAN CUT = Service + Commission − Discount Share
+    const techProductDiscount =
+      productDiscountAmount * (productSplit.technicianPercentage / 100);
+
+    console.log("\n[PRODUCT DISCOUNT]");
+    console.log("Discount %:", productDiscountPct);
+    console.log("Discount amount:", productDiscountAmount);
+    console.log("Split:", productSplit);
+    console.log("Owner discount:", ownerProductDiscount);
+    console.log("Tech discount:", techProductDiscount);
+
+    /* -------------------- MISC COST -------------------- */
+    const miscCost = Number(order.miscellaneousCost) || 0;
+
+    const miscDiscountPct = Math.max(
+      0,
+      Math.min(100, Number(order.miscDiscountPercentage) || 0)
+    );
+
+    const miscDiscountAmount =
+      miscCost * (miscDiscountPct / 100);
+
+    const miscSplit =
+      order.miscDiscountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
+
+    const ownerMiscDiscount =
+      miscDiscountAmount * (miscSplit.ownerPercentage / 100);
+
+    const techMiscDiscount =
+      miscDiscountAmount * (miscSplit.technicianPercentage / 100);
+
+    console.log("\n[MISC COST]");
+    console.log("Misc cost:", miscCost);
+    console.log("Misc discount %:", miscDiscountPct);
+    console.log("Misc discount amount:", miscDiscountAmount);
+    console.log("Split:", miscSplit);
+    console.log("Owner misc discount:", ownerMiscDiscount);
+    console.log("Tech misc discount:", techMiscDiscount);
+
+    /* -------------------- TOTALS -------------------- */
+    const subtotal =
+      productSubtotal + miscCost + fittingCharge;
+
+    const totalDiscount =
+      productDiscountAmount + miscDiscountAmount;
+
+    const netAmount =
+      subtotal - totalDiscount;
+
+    console.log("\n[TOTALS]");
+    console.log("Subtotal:", subtotal);
+    console.log("Total discount:", totalDiscount);
+    console.log("Net amount:", netAmount);
+
+    /* -------------------- TECHNICIAN CUT -------------------- */
     const technician = await Technician.findById(order.technician);
     const serviceRate = Number(technician?.serviceRate) || 0;
 
-    console.log("\n➡ Technician Service Charge:", serviceRate);
+    const technicianCut =
+      serviceRate +
+      technicianCommissionTotal +
+      fittingCharge -
+      techProductDiscount -
+      techMiscDiscount;
 
-    let technicianCut = (serviceRate + technicianCommissionTotal);
-    console.log("Technician Cut Before Discount:", technicianCut);
+    console.log("\n[TECHNICIAN CUT]");
+    console.log("Service rate:", serviceRate);
+    console.log("Commission total:", technicianCommissionTotal);
+    console.log("Fitting charge:", fittingCharge);
+    console.log("Tech product discount:", techProductDiscount);
+    console.log("Tech misc discount:", techMiscDiscount);
+    console.log("Technician cut:", technicianCut);
 
-    technicianCut -= techDiscountShare;
-    console.log("Technician Cut After Tech Discount Share:", technicianCut);
+    /* -------------------- COMPANY CUT -------------------- */
+    const companyCut =
+      netAmount - technicianCut;
 
-    // ✅ COMPANY CUT = TotalAmount − Technician Cut − Owner Discount Share
-    let companyCut = totalAmount - technicianCut;
-    companyCut -= ownerDiscountShare;
+    console.log("\n[COMPANY CUT]");
+    console.log("Company cut:", companyCut);
 
-    console.log("\n➡ Company Cut After Discount Share:", companyCut);
-
+    /* -------------------- FINAL ASSIGN -------------------- */
     order.subtotal = subtotal;
-    order.totalAmount = totalAmount;
-    order.discountAmount = discountAmount;
+    order.totalAmount = subtotal;
+    order.discountAmount = totalDiscount;
     order.netAmount = netAmount;
-    order.technicianCut = technicianCut < 0 ? 0 : technicianCut;
-    order.companyCut = companyCut < 0 ? 0 : companyCut;
-    order.outstandingAmount = netAmount - order.technicianCut;
+    order.technicianCut = Math.max(0, technicianCut);
+    order.companyCut = Math.max(0, companyCut);
+    order.outstandingAmount =
+      netAmount - order.technicianCut;
 
-    console.log("\n========== FINAL VALUES ==========");
-    console.log("Subtotal:", order.subtotal);
-    console.log("Total Amount:", order.totalAmount);
-    console.log("Discount Amount:", order.discountAmount);
-    console.log("Net Amount:", order.netAmount);
-    console.log("Technician Cut:", order.technicianCut);
-    console.log("Company Cut:", order.companyCut);
-    console.log("Outstanding Amount:", order.outstandingAmount);
-    console.log("========== CALCULATION COMPLETE ==========\n");
+    console.log("\n[FINAL]");
+    console.log("Technician cut:", order.technicianCut);
+    console.log("Company cut:", order.companyCut);
+    console.log("Outstanding:", order.outstandingAmount);
+    console.log(
+      "SANITY CHECK:",
+      order.companyCut + order.technicianCut,
+      "should equal",
+      order.netAmount
+    );
+
+    console.log("========== FINANCIAL CALCULATION END ==========\n");
 
   } catch (error) {
     logger.error("Error in calculateFinancials:", error);
 
-    // Fallback to zero on error
     order.subtotal = 0;
     order.totalAmount = 0;
     order.discountAmount = 0;
@@ -479,46 +618,146 @@ async calculateFinancials(order) {
     order.outstandingAmount = 0;
   }
 }
+
+
+
+
  
 
 
-  async approveDiscount(orderId, userId, discountSplit) {
+//   async approveDiscount(orderId, userId, discountSplit) {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
+  
+//   try {
+//     const order = await Order.findById(orderId).session(session);
+//     if (!order) throw new Error('Order not found');
+//     if (order.discountApproved !== 'pending') {
+//       throw new Error('Discount already processed');
+//     }
+
+//     // Validate discount split
+//     if (discountSplit.ownerPercentage + discountSplit.technicianPercentage !== 100) {
+//       throw new Error('Discount split must total 100%');
+//     }
+
+//     // Update discount details
+//     order.discountSplit = discountSplit;
+//     order.discountApproved = 'approved';
+//     order.discountApprovedBy = userId;
+//     order.status = 'completed'; // Set to completed
+
+//     // Recalculate financials with new split
+//     await this.calculateFinancials(order);
+//     await order.save({ session });
+
+//     // Update technician's liability if applicable
+//     await Technician.findByIdAndUpdate(
+//       order.technician,
+//       { 
+//         $inc: { 
+//           outstandingBalance: order.outstandingAmount 
+//         } 
+//       },
+//       { session }
+//     );
+    
+
+//     await session.commitTransaction();
+//     return order;
+//   } catch (error) {
+//     await session.abortTransaction();
+//     throw error;
+//   } finally {
+//     session.endSession();
+//   }
+// }
+
+//   async rejectDiscount(orderId, userId) {
+//     const order = await Order.findById(orderId);
+//     if (!order) throw new Error('Order not found');
+//     if (order.discountApproved !== 'pending') {
+//       throw new Error('Discount already processed');
+//     }
+
+//     order.discountApproved = 'rejected';
+//     order.discountApprovedBy = userId;
+//     order.discountSplit = { ownerPercentage: 100, technicianPercentage: 0 };
+    
+//     // Recalculate without discount
+//     const originalDiscount = order.discountPercentage;
+//     order.discountPercentage = 0;
+//     await this.calculateFinancials(order);
+    
+//     // Restore original discount for records but keep financials without discount
+//     order.discountPercentage = originalDiscount;
+//     await order.save();
+    
+//     return order;
+//   }
+
+async approveDiscount(
+  orderId,
+  userId,
+  {
+    productSplit,
+    miscSplit
+  }
+) {
   const session = await mongoose.startSession();
   session.startTransaction();
-  
+
   try {
     const order = await Order.findById(orderId).session(session);
     if (!order) throw new Error('Order not found');
+
     if (order.discountApproved !== 'pending') {
       throw new Error('Discount already processed');
     }
 
-    // Validate discount split
-    if (discountSplit.ownerPercentage + discountSplit.technicianPercentage !== 100) {
-      throw new Error('Discount split must total 100%');
+    // -------------------------
+    // Validate splits
+    // -------------------------
+    if (
+      productSplit.ownerPercentage + productSplit.technicianPercentage !== 100
+    ) {
+      throw new Error('Product discount split must total 100%');
     }
 
-    // Update discount details
-    order.discountSplit = discountSplit;
+    if (
+      miscSplit.ownerPercentage + miscSplit.technicianPercentage !== 100
+    ) {
+      throw new Error('Misc discount split must total 100%');
+    }
+
+    // -------------------------
+    // Apply approval
+    // -------------------------
+    order.discountSplit = productSplit;
+    order.miscDiscountSplit = miscSplit;
+
     order.discountApproved = 'approved';
     order.discountApprovedBy = userId;
-    order.status = 'completed'; // Set to completed
+    order.status = 'completed';
 
-    // Recalculate financials with new split
+    // -------------------------
+    // Recalculate with both splits
+    // -------------------------
     await this.calculateFinancials(order);
     await order.save({ session });
 
-    // Update technician's liability if applicable
+    // -------------------------
+    // Update technician outstanding
+    // -------------------------
     await Technician.findByIdAndUpdate(
       order.technician,
-      { 
-        $inc: { 
-          outstandingBalance: order.outstandingAmount 
-        } 
+      {
+        $inc: {
+          outstandingBalance: order.outstandingAmount
+        }
       },
       { session }
     );
-    
 
     await session.commitTransaction();
     return order;
@@ -530,28 +769,39 @@ async calculateFinancials(order) {
   }
 }
 
-  async rejectDiscount(orderId, userId) {
-    const order = await Order.findById(orderId);
-    if (!order) throw new Error('Order not found');
-    if (order.discountApproved !== 'pending') {
-      throw new Error('Discount already processed');
-    }
 
-    order.discountApproved = 'rejected';
-    order.discountApprovedBy = userId;
-    order.discountSplit = { ownerPercentage: 100, technicianPercentage: 0 };
-    
-    // Recalculate without discount
-    const originalDiscount = order.discountPercentage;
-    order.discountPercentage = 0;
-    await this.calculateFinancials(order);
-    
-    // Restore original discount for records but keep financials without discount
-    order.discountPercentage = originalDiscount;
-    await order.save();
-    
-    return order;
+async rejectDiscount(orderId, userId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw new Error('Order not found');
+
+  if (order.discountApproved !== 'pending') {
+    throw new Error('Discount already processed');
   }
+
+  order.discountApproved = 'rejected';
+  order.discountApprovedBy = userId;
+
+  // Default splits
+  order.discountSplit = { ownerPercentage: 100, technicianPercentage: 0 };
+  order.miscDiscountSplit = { ownerPercentage: 100, technicianPercentage: 0 };
+
+  // Preserve original values for audit
+  const originalProductDiscount = order.discountPercentage;
+  const originalMiscDiscount = order.miscDiscountPercentage;
+
+  // Temporarily remove discounts
+  order.discountPercentage = 0;
+  order.miscDiscountPercentage = 0;
+
+  await this.calculateFinancials(order);
+
+  // Restore original values (financials already frozen)
+  order.discountPercentage = originalProductDiscount;
+  order.miscDiscountPercentage = originalMiscDiscount;
+
+  await order.save();
+  return order;
+}
 
 
 async getDraftOrders({ skip = 0, limit = 50 } = {}) {

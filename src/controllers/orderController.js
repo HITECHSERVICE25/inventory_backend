@@ -89,12 +89,12 @@ exports.completeOrder = async (req, res, next) => {
 
 exports.approveDiscount = async (req, res, next) => {
   try {
-    const { ownerPercentage, technicianPercentage } = req.body;
+    // const { ownerPercentage, technicianPercentage } = req.body;
     
     const order = await orderService.approveDiscount(
       req.params.id,
       req.user.id,
-      { ownerPercentage, technicianPercentage }
+      req.body
     );
     
     res.status(200).json({ success: true, data: order });
