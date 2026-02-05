@@ -191,43 +191,79 @@ async updateCommissionAgreement(technicianId, productId, amount) {
   }
 }
 
+// async listCommissions(filter = {}, options = {}) {
+//   try {
+//     const { page = 1, limit = 10, sort = '-createdAt', ...filters } = options;
+
+//     // Build query with filtering, sorting, and pagination
+//     const query = CommissionAgreement.find(filters)
+//       .sort(sort)
+//       .skip((page - 1) * limit)
+//       .limit(Number(limit))
+//       .populate('product', 'name price') // Include product details
+//       .populate('technician', 'name'); // Include technician name if needed
+
+//     // Execute query and count total documents
+//     const [commissions, total] = await Promise.all([
+//       query.exec(),
+//       CommissionAgreement.countDocuments(filter)
+//     ]);
+
+//     // Return standardized response format
+//     return {
+//       data: commissions,
+//       pagination: {
+//         page: Number(page),
+//         limit: Number(limit),
+//         total,
+//         totalPages: Math.ceil(total / limit)
+//       }
+//     };
+//   } catch (error) {
+//     logger.error('Error listing commissions', { 
+//       filter, 
+//       options, 
+//       error: error.message 
+//     });
+//     throw error;
+//   }
+// }
+
 async listCommissions(filter = {}, options = {}) {
-  try {
-    const { page = 1, limit = 10, sort = '-createdAt', ...filters } = options;
+  const {
+    page = 1,
+    limit = 10,
+    sort = '-createdAt'
+  } = options;
 
-    // Build query with filtering, sorting, and pagination
-    const query = CommissionAgreement.find(filters)
-      .sort(sort)
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
-      .populate('product', 'name price') // Include product details
-      .populate('technician', 'name'); // Include technician name if needed
+  // ONLY real DB filters go here
+  const queryFilter = {
+    ...filter
+  };
 
-    // Execute query and count total documents
-    const [commissions, total] = await Promise.all([
-      query.exec(),
-      CommissionAgreement.countDocuments(filter)
-    ]);
+  const query = CommissionAgreement.find(queryFilter)
+    .sort(sort)
+    .skip((page - 1) * limit)
+    .limit(Number(limit))
+    .populate('product', 'name price')
+    .populate('technician', 'name');
 
-    // Return standardized response format
-    return {
-      data: commissions,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
-  } catch (error) {
-    logger.error('Error listing commissions', { 
-      filter, 
-      options, 
-      error: error.message 
-    });
-    throw error;
-  }
+  const [commissions, total] = await Promise.all([
+    query.exec(),
+    CommissionAgreement.countDocuments(queryFilter)
+  ]);
+
+  return {
+    data: commissions,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 }
+
 
   async calculateTechnicianEarnings(technicianId, productId, saleAmount) {
     try {

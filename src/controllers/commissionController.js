@@ -55,12 +55,19 @@ exports.updateCommission = async (req, res, next) => {
 
 exports.getCommissions = async (req, res, next) => {
   try {
-    const commissions = await technicianService.listCommissions(req.query);
+    const { page, limit, sort } = req.query;
+
+    const commissions = await technicianService.listCommissions(
+      {}, // filter (empty for now)
+      { page, limit, sort } // options
+    );
+
     res.status(200).json({ success: true, data: commissions });
   } catch (error) {
     next(error);
   }
 };
+
 
 exports.calculateEarnings = async (req, res, next) => {
   try {
