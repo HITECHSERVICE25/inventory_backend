@@ -11,13 +11,13 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router
   .route('/')
   .get(getCompanies)
-  .post(protect, authorize('admin'), createCompany);
+  .post(protect, createCompany);
 
   // Update a company by ID
-router.put('/:id', protect, authorize('admin'), updateCompany);
+router.put('/:id', protect, updateCompany);
 
 // Delete a company by ID
-router.delete('/:id', protect, authorize('admin'), deleteCompany);
+router.delete('/:id', protect, deleteCompany);
 
 
 

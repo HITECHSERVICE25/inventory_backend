@@ -6,7 +6,6 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router.post(
   '/allocate',
   protect,
-  authorize('admin'),
   allocationController.allocateProducts
 );
 

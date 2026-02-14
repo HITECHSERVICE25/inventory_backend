@@ -191,44 +191,6 @@ async updateCommissionAgreement(technicianId, productId, amount) {
   }
 }
 
-// async listCommissions(filter = {}, options = {}) {
-//   try {
-//     const { page = 1, limit = 10, sort = '-createdAt', ...filters } = options;
-
-//     // Build query with filtering, sorting, and pagination
-//     const query = CommissionAgreement.find(filters)
-//       .sort(sort)
-//       .skip((page - 1) * limit)
-//       .limit(Number(limit))
-//       .populate('product', 'name price') // Include product details
-//       .populate('technician', 'name'); // Include technician name if needed
-
-//     // Execute query and count total documents
-//     const [commissions, total] = await Promise.all([
-//       query.exec(),
-//       CommissionAgreement.countDocuments(filter)
-//     ]);
-
-//     // Return standardized response format
-//     return {
-//       data: commissions,
-//       pagination: {
-//         page: Number(page),
-//         limit: Number(limit),
-//         total,
-//         totalPages: Math.ceil(total / limit)
-//       }
-//     };
-//   } catch (error) {
-//     logger.error('Error listing commissions', { 
-//       filter, 
-//       options, 
-//       error: error.message 
-//     });
-//     throw error;
-//   }
-// }
-
 async listCommissions(filter = {}, options = {}) {
   const {
     page = 1,
@@ -262,6 +224,39 @@ async listCommissions(filter = {}, options = {}) {
       totalPages: Math.ceil(total / limit)
     }
   };
+}
+
+// DELETE /api/commissions/:id
+async deleteCommissionAgreementById(id) {
+  try {
+    if (!id) {
+      throw new Error('Commission agreement ID is required');
+    }
+
+    const agreement = await CommissionAgreement.findById(id);
+
+    if (!agreement) {
+      throw new Error('Commission agreement not found');
+    }
+
+    await CommissionAgreement.findByIdAndDelete(id);
+
+    logger.info('Commission agreement deleted', { 
+      agreementId: id,
+      technicianId: agreement.technician,
+      productId: agreement.product
+    });
+
+    return {
+      message: 'Commission agreement deleted successfully'
+    };
+  } catch (error) {
+    logger.error('Failed to delete commission agreement', { 
+      error: error.message,
+      agreementId: id
+    });
+    throw error;
+  }
 }
 
 

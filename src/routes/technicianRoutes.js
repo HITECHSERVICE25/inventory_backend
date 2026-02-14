@@ -10,7 +10,6 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router.post(
   '/',
   protect,
-  authorize('admin'),
   validateCreateTechnician,
   technicianController.createTechnician
 );
@@ -21,7 +20,6 @@ router.get('/:id', technicianController.getTechnician);
 router.put(
   '/:id',
   protect,
-  authorize('admin'),
   validateUpdateTechnician,
   technicianController.updateTechnician
 );
@@ -29,7 +27,6 @@ router.put(
 router.patch(
   '/:id/block',
   protect,
-  authorize('admin'),
   technicianController.updateBlockStatus
 );
 

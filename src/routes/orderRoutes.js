@@ -8,7 +8,6 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router.get(
   '/drafts',
   protect,
-  authorize('admin', 'manager'),
   orderController.getDraftOrders
 );
 
@@ -16,7 +15,6 @@ router.get(
 router.post(
   '/drafts',
   protect,
-  authorize('admin', 'manager'),
   orderController.createDraftOrder
 );
 
@@ -24,7 +22,6 @@ router.post(
 router.patch(
   '/drafts/:id',
   protect,
-  authorize('admin', 'manager'),
   orderController.updateDraftOrder
 );
 
@@ -32,7 +29,6 @@ router.patch(
 router.put(
   '/:id/complete',
   protect,
-  authorize('admin', 'manager'),
   orderController.completeOrder
 );
 
@@ -40,7 +36,6 @@ router.put(
 router.patch(
   '/:id/approve-discount',
   protect,
-  authorize('admin', 'supervisor'),
   orderController.approveDiscount
 );
 
@@ -48,7 +43,6 @@ router.patch(
 router.patch(
   '/:id/reject-discount',
   protect,
-  authorize('admin', 'supervisor'),
   orderController.rejectDiscount
 );
 

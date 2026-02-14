@@ -68,6 +68,23 @@ exports.getCommissions = async (req, res, next) => {
   }
 };
 
+// DELETE /api/commissions/:id
+exports.deleteCommission = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await technicianService.deleteCommissionAgreementById(id);
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 exports.calculateEarnings = async (req, res, next) => {
   try {

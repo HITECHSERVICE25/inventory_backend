@@ -7,7 +7,6 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router.put(
   '/',
   protect,
-  authorize('admin'),
   validateChargeUpdate,
   installationController.updateInstallationCharge
 );

@@ -7,7 +7,7 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 // Create commission (POST /commissions)
 router.post(
   '/',
-  protect, authorize('admin'),
+  protect,
   validateCommissionCreate,
   commissionController.createCommission
 );
@@ -15,7 +15,7 @@ router.post(
 // Update commission (PUT /commissions/:technicianId/:productId)
 router.put(
   '/:technicianId/:productId',
-  protect, authorize('admin'),
+  protect, 
   validateCommissionUpdate,
   commissionController.updateCommission
 );
@@ -31,5 +31,12 @@ router.post(
   protect,
   commissionController.calculateEarnings
 );
+
+router.delete(
+  '/:id',
+  protect,
+  commissionController.deleteCommission
+);
+
 
 module.exports = router;

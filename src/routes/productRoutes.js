@@ -10,7 +10,6 @@ const { protect, authorize } = require('../middlewares/authMiddleware');
 router.post(
   '/',
   protect,
-  authorize('admin'),
   validateCreateProduct,
   productController.createProduct
 );
@@ -22,7 +21,6 @@ router.get('/:id', productController.getProduct);
 router.put(
   '/:id',
   protect,
-  authorize('admin'),
   validateUpdateProduct,
   productController.updateProduct
 );
@@ -30,7 +28,6 @@ router.put(
 router.delete(
   '/:id',
   protect,
-  authorize('admin'),
   productController.deleteProduct
 );
 
