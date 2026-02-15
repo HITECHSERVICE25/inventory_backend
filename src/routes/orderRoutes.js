@@ -11,6 +11,13 @@ router.get(
   orderController.getDraftOrders
 );
 
+router.get(
+  '/export',
+  protect,
+  orderController.exportOrders
+);
+
+
 // Draft Orders
 router.post(
   '/drafts',
@@ -45,6 +52,14 @@ router.patch(
   protect,
   orderController.rejectDiscount
 );
+
+router.delete(
+  '/:id',
+  protect,
+  authorize('admin'),
+  orderController.deleteOrder
+);
+
 
 // Payments
 router.post(

@@ -1,5 +1,6 @@
 const orderService = require('../services/orderService');
 const paymentService = require('../services/paymentService');
+const { generateOrdersExcel } = require('../utils/orderExcel.helper');
 
 exports.createDraftOrder = async (req, res, next) => {
   try {
@@ -115,6 +116,23 @@ exports.rejectDiscount = async (req, res, next) => {
   }
 };
 
+exports.deleteOrder = async (req, res, next) => {
+  try {
+    const result = await orderService.deleteOrderById(
+      req.params.id,
+      req.user.id
+    );
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 exports.recordPayment = async (req, res, next) => {
   try {
     const payment = await paymentService.recordPayment({
@@ -163,6 +181,31 @@ exports.getDraftOrders = async (req, res, next) => {
         skip: actualSkip
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.exportOrders = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const orders = await orderService.exportOrders({ startDate, endDate });
+
+    const workbook = await generateOrdersExcel(orders);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=orders.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
   } catch (error) {
     next(error);
   }

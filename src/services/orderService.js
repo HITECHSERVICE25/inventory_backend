@@ -7,15 +7,24 @@ const CommissionAgreement = require("../models/CommissionAgreement");
 
 const  logger  = require('../utils/logger');
 const Technician = require('../models/Technician');
+const Company = require('../models/Company');
 
 class OrderService {
     async createDraftOrder(orderData) {
       try{
-        const installationCharge = await InstallationCharge.findOne({ isCurrent: true });
+
+        let installationCharge;
+        if(orderData?.freeInstallation){
+          installationCharge = 0;
+        } else {
+          const company = await Company.findById(orderData.company);
+          installationCharge = company.installationCharge;
+        }
+        
         console.log("orderData:", orderData);
         const order = await Order.create({
           ...orderData,
-          installationCharge: installationCharge.amount,
+          installationCharge: installationCharge,
           status: 'draft',
           customer: {
             name: orderData.customer.name,
@@ -65,6 +74,19 @@ class OrderService {
   if (!order) {
     throw new Error('Draft order not found or already completed');
   }
+
+
+
+   let installationCharge;
+        if(orderData?.freeInstallation){
+          installationCharge = 0;
+        } else {
+          const company = await Company.findById(orderData.company);
+          installationCharge = company.installationCharge;
+        }
+
+  order.freeInstallation = orderData.freeInstallation;
+  order.installationCharge = installationCharge;
 
   // 2. Update core order fields
   if (orderData.TCRNumber !== undefined) order.TCRNumber = orderData.TCRNumber;
@@ -826,6 +848,73 @@ async getDraftOrders({ skip = 0, limit = 50 } = {}) {
     throw new Error('Failed to retrieve draft orders');
   }
 }
+
+async exportOrders({ startDate, endDate }) {
+  try {
+    if (!startDate || !endDate) {
+      throw new Error("Start date and end date are required for export");
+    }
+
+    const filter = {
+      createdAt: {
+        $gte: new Date(startDate),
+        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+      }
+    };
+
+    const orders = await Order.find(filter)
+      .populate('company technician')
+      .populate({
+        path: 'products.product',
+        model: 'Product'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return orders;
+
+  } catch (error) {
+    logger.error('Error exporting orders:', error);
+    throw new Error('Failed to export orders');
+  }
+}
+
+
+async deleteOrderById(orderId, userId) {
+  try {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Optional: Add business rules check here
+    // Example: Prevent deleting completed orders
+    // if (order.status === 'completed') {
+    //   throw new Error('Completed orders cannot be deleted');
+    // }
+
+    await Order.findByIdAndDelete(orderId);
+
+    logger.info('Order deleted successfully', {
+      orderId,
+      deletedBy: userId
+    });
+
+    return {
+      message: 'Order deleted successfully'
+    };
+  } catch (error) {
+    logger.error('Failed to delete order', {
+      error: error.message,
+      orderId,
+      deletedBy: userId
+    });
+
+    throw error;
+  }
+}
+
 }
 
 module.exports = new OrderService();

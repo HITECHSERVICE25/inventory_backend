@@ -13,6 +13,7 @@ const orderSchema = new mongoose.Schema({
   
   // Financials
   installationCharge: Number,
+  freeInstallation: {type: Boolean, default: 0},
   miscellaneousCost: { type: Number, default: 0 },
   fittingCost: { type: Number, default: 0 },
   miscDiscountPercentage: { type: Number, default: 0 },
