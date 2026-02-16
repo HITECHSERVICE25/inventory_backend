@@ -11,6 +11,7 @@ exports.validateCreateTechnician = [
   body('aadhaar').isNumeric().isLength({ min: 12, max: 12 }),
   body('pan').matches(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/),
   body('serviceRate').isFloat({ min: 0 }),
+  body('miscShare').isInt({ min: 0 }),
   body('companies').optional().isArray(),
   body('companies.*').isMongoId()
 ];
@@ -20,5 +21,6 @@ exports.validateUpdateTechnician = [
   body('phone').optional().isMobilePhone('en-IN'),
   body('email').optional().isEmail(),
   body('serviceRate').optional().isFloat({ min: 0 }),
+  body('miscShare').isInt({ min: 0 }),
   body('isBlocked').optional().isBoolean()
 ];

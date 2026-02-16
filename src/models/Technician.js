@@ -66,6 +66,7 @@ const technicianSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  miscShare: { type: Number, default: 0 },
   outstandingBalance: { type: Number, default: 0 },
   dueFromDiscounts: { type: Number, default: 0 }
 }, {timestamps: true});
