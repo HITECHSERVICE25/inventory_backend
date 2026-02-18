@@ -16,26 +16,23 @@ const orderSchema = new mongoose.Schema({
   freeInstallation: {type: Boolean, default: 0},
   miscellaneousCost: { type: Number, default: 0 },
   fittingCost: { type: Number, default: 0 },
-  miscDiscountPercentage: { type: Number, default: 0 },
-  discountPercentage: { type: Number, default: 0 },
+    discount: {
+    type: {
+      type: String,
+      enum: ['percentage', 'amount'],
+      default: 'percentage'
+    },
+    value: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
+  },
+
   discountApproved: { 
     type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
-  },
-  miscDiscountSplit: {
-    ownerPercentage: { 
-      type: Number, 
-      default: 100,
-      min: 0,
-      max: 100
-    },
-    technicianPercentage: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100
-    }
   },
   discountSplit: {
     ownerPercentage: { 
