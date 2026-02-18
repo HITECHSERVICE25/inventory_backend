@@ -184,11 +184,10 @@ class AuthService {
         throw new AppError('User not found', 404);
       }
 
-      // If password is being updated, hash it
-      // if (updateData.password) {
-      //   logger.debug('Password update detected', { userId });
-      //   updateData.password = await bcrypt.hash(updateData.password, 12);
-      // }
+      if (updateData.password) {
+        logger.debug('Password update detected', { userId });
+        updateData.password = await bcrypt.hash(updateData.password, 12);
+      }
 
       // Update the user
       const updatedUser = await User.findByIdAndUpdate(
