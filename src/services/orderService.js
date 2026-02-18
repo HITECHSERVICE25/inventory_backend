@@ -398,6 +398,8 @@ async calculateFinancials(order) {
     let productTotal = Number(order.installationCharge) || 0;
     let commissionTotal = 0;
 
+    /* ================= PRODUCTS ================= */
+
     for (const item of order.products || []) {
       const product = await Product.findById(item.product);
       if (!product) continue;
@@ -426,14 +428,13 @@ async calculateFinancials(order) {
     const grossSubtotal =
         productTotal
       + miscCost
-      + fittingCharge
-      + serviceRate;
+      + fittingCharge;
 
-    /* ================= DISCOUNT LOGIC ================= */
+    /* ================= DISCOUNT ================= */
 
     let discountAmount = 0;
 
-    if (order.discount?.type === 'percentage') {
+    if (order.discount?.type === "percentage") {
       const pct = Math.max(
         0,
         Math.min(100, Number(order.discount.value) || 0)
@@ -441,7 +442,7 @@ async calculateFinancials(order) {
       discountAmount = grossSubtotal * (pct / 100);
     }
 
-    if (order.discount?.type === 'amount') {
+    if (order.discount?.type === "amount") {
       discountAmount = Math.min(
         grossSubtotal,
         Number(order.discount.value) || 0
@@ -450,11 +451,10 @@ async calculateFinancials(order) {
 
     /* ================= SPLIT ================= */
 
-    const split =
-      order.discountSplit || {
-        ownerPercentage: 100,
-        technicianPercentage: 0
-      };
+    const split = order.discountSplit || {
+      ownerPercentage: 100,
+      technicianPercentage: 0
+    };
 
     const technicianDiscount =
       discountAmount *
@@ -463,6 +463,9 @@ async calculateFinancials(order) {
     const netAmount =
       grossSubtotal - discountAmount;
 
+    /* ================= TECHNICIAN CUT ================= */
+    /* ✅ Service rate still fully paid */
+
     const technicianCut =
         serviceRate
       + commissionTotal
@@ -470,12 +473,14 @@ async calculateFinancials(order) {
       + techMiscEarning
       - technicianDiscount;
 
+    /* ================= COMPANY CUT ================= */
+
     const companyCut =
       netAmount - technicianCut;
 
     /* ================= ASSIGN ================= */
 
-    order.totalAmount = grossSubtotal;
+    order.totalAmount = grossSubtotal;   // no service included
     order.discountAmount = discountAmount;
     order.netAmount = netAmount;
     order.technicianCut = technicianCut;
@@ -491,6 +496,7 @@ async calculateFinancials(order) {
     order.outstandingAmount = 0;
   }
 }
+
 
 
 
