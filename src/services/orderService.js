@@ -173,6 +173,7 @@ class OrderService {
     /* ================= NEW DISCOUNT STRUCTURE ================= */
 
     order.discount = completionData?.discount;
+    order.completionDate = new Date();
 
     /* If split is sent */
     if (completionData.discountSplit) {
@@ -216,173 +217,7 @@ class OrderService {
 
 
 
-// async calculateFinancials(order) {
-//   try {
-//     console.log("\n========== FINANCIAL CALCULATION START ==========");
-//     console.log("ORDER ID:", order._id?.toString());
 
-//     /* -------------------- FETCH TECHNICIAN EARLY -------------------- */
-//     const technician = await Technician.findById(order.technician);
-
-//     const serviceRate = Number(technician?.serviceRate) || 0;
-//     const miscSharePct = Math.max(
-//       0,
-//       Math.min(100, Number(technician?.miscShare) || 0)
-//     );
-
-//     console.log("\n[TECHNICIAN INFO]");
-//     console.log("Service rate:", serviceRate);
-//     console.log("Misc share %:", miscSharePct);
-
-//     /* -------------------- INIT -------------------- */
-//     let productSubtotal = Number(order.installationCharge) || 0;
-//     let technicianCommissionTotal = 0;
-
-//     console.log("\n[INIT]");
-//     console.log("Installation charge:", productSubtotal);
-
-//     /* -------------------- PRODUCTS -------------------- */
-//     for (const item of order.products || []) {
-//       const product = await Product.findById(item.product);
-//       if (!product) continue;
-
-//       const price = Number(item.salePrice ?? product.price) || 0;
-//       const qty = Number(item.quantity) || 0;
-//       const lineTotal = price * qty;
-
-//       productSubtotal += lineTotal;
-
-//       const agreement = await CommissionAgreement.findOne({
-//         technician: order.technician,
-//         product: item.product
-//       });
-
-//       if (agreement) {
-//         technicianCommissionTotal += (Number(agreement.amount) || 0) * qty;
-//       }
-//     }
-
-//     console.log("\n[PRODUCT TOTAL]");
-//     console.log("Product subtotal:", productSubtotal);
-//     console.log("Commission total:", technicianCommissionTotal);
-
-//     /* -------------------- FITTING -------------------- */
-//     const fittingCharge = Number(order.fittingCost) || 0;
-//     console.log("\n[FITTING]");
-//     console.log("Fitting charge:", fittingCharge);
-
-//     /* -------------------- PRODUCT DISCOUNT -------------------- */
-//     const productDiscountPct = Math.max(
-//       0,
-//       Math.min(100, Number(order.discountPercentage) || 0)
-//     );
-
-//     const productDiscountAmount =
-//       productSubtotal * (productDiscountPct / 100);
-
-//     const productSplit =
-//       order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
-
-//     const techProductDiscount =
-//       productDiscountAmount *
-//       ((Number(productSplit.technicianPercentage) || 0) / 100);
-
-//     console.log("\n[PRODUCT DISCOUNT]");
-//     console.log("Discount amount:", productDiscountAmount);
-//     console.log("Tech share:", techProductDiscount);
-
-//     /* -------------------- MISC COST -------------------- */
-//     const miscCost = Number(order.miscellaneousCost) || 0;
-
-//     const miscDiscountPct = Math.max(
-//       0,
-//       Math.min(100, Number(order.miscDiscountPercentage) || 0)
-//     );
-
-//     const miscDiscountAmount =
-//       miscCost * (miscDiscountPct / 100);
-
-//     const netMisc = miscCost - miscDiscountAmount;
-
-//     const techMiscEarning =
-//       netMisc * (miscSharePct / 100);
-
-//     const companyMiscEarning =
-//       netMisc - techMiscEarning;
-
-//     console.log("\n[MISC UPDATED]");
-//     console.log("Misc cost:", miscCost);
-//     console.log("Discount:", miscDiscountAmount);
-//     console.log("Net misc:", netMisc);
-//     console.log("Technician misc earning:", techMiscEarning);
-//     console.log("Company misc earning:", companyMiscEarning);
-
-//     /* -------------------- TOTALS -------------------- */
-//     const subtotal =
-//       productSubtotal + miscCost + fittingCharge;
-
-//     const totalDiscount =
-//       productDiscountAmount + miscDiscountAmount;
-
-//     const netAmount =
-//       subtotal - totalDiscount;
-
-//     console.log("\n[TOTALS]");
-//     console.log("Subtotal:", subtotal);
-//     console.log("Total discount:", totalDiscount);
-//     console.log("Net amount:", netAmount);
-
-//     /* -------------------- TECHNICIAN CUT -------------------- */
-//     const technicianCut =
-//       serviceRate +
-//       technicianCommissionTotal +
-//       fittingCharge +
-//       techMiscEarning -
-//       techProductDiscount;
-
-//     console.log("\n[TECHNICIAN CUT]");
-//     console.log("Technician cut:", technicianCut);
-
-//     /* -------------------- COMPANY CUT -------------------- */
-//     const companyCut =
-//       netAmount - technicianCut;
-
-//     console.log("\n[COMPANY CUT]");
-//     console.log("Company cut:", companyCut);
-
-//     /* -------------------- FINAL ASSIGN -------------------- */
-//     order.subtotal = subtotal;
-//     order.totalAmount = subtotal;
-//     order.discountAmount = totalDiscount;
-//     order.netAmount = netAmount;
-//     order.technicianCut = Math.max(0, technicianCut);
-//     order.companyCut = Math.max(0, companyCut);
-//     order.outstandingAmount = order.companyCut;
-
-//     console.log("\n[FINAL]");
-//     console.log("Technician cut:", order.technicianCut);
-//     console.log("Company cut:", order.companyCut);
-//     console.log(
-//       "SANITY CHECK:",
-//       order.companyCut + order.technicianCut,
-//       "should equal",
-//       order.netAmount
-//     );
-
-//     console.log("========== FINANCIAL CALCULATION END ==========\n");
-
-//   } catch (error) {
-//     logger.error("Error in calculateFinancials:", error);
-
-//     order.subtotal = 0;
-//     order.totalAmount = 0;
-//     order.discountAmount = 0;
-//     order.netAmount = 0;
-//     order.technicianCut = 0;
-//     order.companyCut = 0;
-//     order.outstandingAmount = 0;
-//   }
-// }
 
 
 async calculateFinancials(order) {
@@ -864,6 +699,174 @@ module.exports = new OrderService();
 //     console.log("Technician cut:", order.technicianCut);
 //     console.log("Company cut:", order.companyCut);
 //     console.log("Outstanding:", order.outstandingAmount);
+//     console.log(
+//       "SANITY CHECK:",
+//       order.companyCut + order.technicianCut,
+//       "should equal",
+//       order.netAmount
+//     );
+
+//     console.log("========== FINANCIAL CALCULATION END ==========\n");
+
+//   } catch (error) {
+//     logger.error("Error in calculateFinancials:", error);
+
+//     order.subtotal = 0;
+//     order.totalAmount = 0;
+//     order.discountAmount = 0;
+//     order.netAmount = 0;
+//     order.technicianCut = 0;
+//     order.companyCut = 0;
+//     order.outstandingAmount = 0;
+//   }
+// }
+
+// async calculateFinancials(order) {
+//   try {
+//     console.log("\n========== FINANCIAL CALCULATION START ==========");
+//     console.log("ORDER ID:", order._id?.toString());
+
+//     /* -------------------- FETCH TECHNICIAN EARLY -------------------- */
+//     const technician = await Technician.findById(order.technician);
+
+//     const serviceRate = Number(technician?.serviceRate) || 0;
+//     const miscSharePct = Math.max(
+//       0,
+//       Math.min(100, Number(technician?.miscShare) || 0)
+//     );
+
+//     console.log("\n[TECHNICIAN INFO]");
+//     console.log("Service rate:", serviceRate);
+//     console.log("Misc share %:", miscSharePct);
+
+//     /* -------------------- INIT -------------------- */
+//     let productSubtotal = Number(order.installationCharge) || 0;
+//     let technicianCommissionTotal = 0;
+
+//     console.log("\n[INIT]");
+//     console.log("Installation charge:", productSubtotal);
+
+//     /* -------------------- PRODUCTS -------------------- */
+//     for (const item of order.products || []) {
+//       const product = await Product.findById(item.product);
+//       if (!product) continue;
+
+//       const price = Number(item.salePrice ?? product.price) || 0;
+//       const qty = Number(item.quantity) || 0;
+//       const lineTotal = price * qty;
+
+//       productSubtotal += lineTotal;
+
+//       const agreement = await CommissionAgreement.findOne({
+//         technician: order.technician,
+//         product: item.product
+//       });
+
+//       if (agreement) {
+//         technicianCommissionTotal += (Number(agreement.amount) || 0) * qty;
+//       }
+//     }
+
+//     console.log("\n[PRODUCT TOTAL]");
+//     console.log("Product subtotal:", productSubtotal);
+//     console.log("Commission total:", technicianCommissionTotal);
+
+//     /* -------------------- FITTING -------------------- */
+//     const fittingCharge = Number(order.fittingCost) || 0;
+//     console.log("\n[FITTING]");
+//     console.log("Fitting charge:", fittingCharge);
+
+//     /* -------------------- PRODUCT DISCOUNT -------------------- */
+//     const productDiscountPct = Math.max(
+//       0,
+//       Math.min(100, Number(order.discountPercentage) || 0)
+//     );
+
+//     const productDiscountAmount =
+//       productSubtotal * (productDiscountPct / 100);
+
+//     const productSplit =
+//       order.discountSplit || { ownerPercentage: 100, technicianPercentage: 0 };
+
+//     const techProductDiscount =
+//       productDiscountAmount *
+//       ((Number(productSplit.technicianPercentage) || 0) / 100);
+
+//     console.log("\n[PRODUCT DISCOUNT]");
+//     console.log("Discount amount:", productDiscountAmount);
+//     console.log("Tech share:", techProductDiscount);
+
+//     /* -------------------- MISC COST -------------------- */
+//     const miscCost = Number(order.miscellaneousCost) || 0;
+
+//     const miscDiscountPct = Math.max(
+//       0,
+//       Math.min(100, Number(order.miscDiscountPercentage) || 0)
+//     );
+
+//     const miscDiscountAmount =
+//       miscCost * (miscDiscountPct / 100);
+
+//     const netMisc = miscCost - miscDiscountAmount;
+
+//     const techMiscEarning =
+//       netMisc * (miscSharePct / 100);
+
+//     const companyMiscEarning =
+//       netMisc - techMiscEarning;
+
+//     console.log("\n[MISC UPDATED]");
+//     console.log("Misc cost:", miscCost);
+//     console.log("Discount:", miscDiscountAmount);
+//     console.log("Net misc:", netMisc);
+//     console.log("Technician misc earning:", techMiscEarning);
+//     console.log("Company misc earning:", companyMiscEarning);
+
+//     /* -------------------- TOTALS -------------------- */
+//     const subtotal =
+//       productSubtotal + miscCost + fittingCharge;
+
+//     const totalDiscount =
+//       productDiscountAmount + miscDiscountAmount;
+
+//     const netAmount =
+//       subtotal - totalDiscount;
+
+//     console.log("\n[TOTALS]");
+//     console.log("Subtotal:", subtotal);
+//     console.log("Total discount:", totalDiscount);
+//     console.log("Net amount:", netAmount);
+
+//     /* -------------------- TECHNICIAN CUT -------------------- */
+//     const technicianCut =
+//       serviceRate +
+//       technicianCommissionTotal +
+//       fittingCharge +
+//       techMiscEarning -
+//       techProductDiscount;
+
+//     console.log("\n[TECHNICIAN CUT]");
+//     console.log("Technician cut:", technicianCut);
+
+//     /* -------------------- COMPANY CUT -------------------- */
+//     const companyCut =
+//       netAmount - technicianCut;
+
+//     console.log("\n[COMPANY CUT]");
+//     console.log("Company cut:", companyCut);
+
+//     /* -------------------- FINAL ASSIGN -------------------- */
+//     order.subtotal = subtotal;
+//     order.totalAmount = subtotal;
+//     order.discountAmount = totalDiscount;
+//     order.netAmount = netAmount;
+//     order.technicianCut = Math.max(0, technicianCut);
+//     order.companyCut = Math.max(0, companyCut);
+//     order.outstandingAmount = order.companyCut;
+
+//     console.log("\n[FINAL]");
+//     console.log("Technician cut:", order.technicianCut);
+//     console.log("Company cut:", order.companyCut);
 //     console.log(
 //       "SANITY CHECK:",
 //       order.companyCut + order.technicianCut,
