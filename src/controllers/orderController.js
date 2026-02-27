@@ -1,6 +1,6 @@
 const orderService = require('../services/orderService');
 const paymentService = require('../services/paymentService');
-const { generateOrdersExcel } = require('../utils/orderExcel.helper');
+const { generateOrdersExcel } = require('../utils/excel.helper');
 
 exports.createDraftOrder = async (req, res, next) => {
   try {
@@ -155,21 +155,54 @@ exports.getOutstanding = async (req, res, next) => {
 };
 
 
+// exports.getDraftOrders = async (req, res, next) => {
+//   try {
+//     let page = parseInt(req.query.page) || 1;
+//     let limit = parseInt(req.query.limit) || 10;
+    
+//     page = page > 0 ? page : 1;
+//     limit = limit > 0 && limit <= 100 ? limit : 10;
+    
+//     const skip = (page - 1) * limit;
+    
+//     const { draftOrders, total, skip: actualSkip, limit: actualLimit } = 
+//       await orderService.getDraftOrders({ skip, limit });
+    
+//     const pages = Math.ceil(total / actualLimit);
+    
+//     res.status(200).json({
+//       success: true,
+//       data: draftOrders,
+//       pagination: {
+//         total,
+//         page,
+//         pages,
+//         limit: actualLimit,
+//         skip: actualSkip
+//       }
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
 exports.getDraftOrders = async (req, res, next) => {
   try {
     let page = parseInt(req.query.page) || 1;
     let limit = parseInt(req.query.limit) || 10;
-    
+    const search = req.query.search?.trim(); // 👈 search param
+
     page = page > 0 ? page : 1;
     limit = limit > 0 && limit <= 100 ? limit : 10;
-    
+
     const skip = (page - 1) * limit;
-    
-    const { draftOrders, total, skip: actualSkip, limit: actualLimit } = 
-      await orderService.getDraftOrders({ skip, limit });
-    
+
+    const { draftOrders, total, skip: actualSkip, limit: actualLimit } =
+      await orderService.getDraftOrders({ skip, limit, search });
+
     const pages = Math.ceil(total / actualLimit);
-    
+
     res.status(200).json({
       success: true,
       data: draftOrders,

@@ -210,15 +210,13 @@ async function generateOrdersExcel(orders) {
   worksheet.getColumn("completionDate").numFmt = "dd-mm-yyyy";
 
   orders.forEach(order => {
+  
+  
+    const products = order.products && order.products.length > 0
+  ? order.products
+  : [null]; // fallback row
 
-    const productTotal =
-      order.products?.reduce(
-        (sum, item) =>
-          sum + (Number(item.salePrice || 0) * Number(item.quantity || 0)),
-        0
-      ) || 0;
-
-    (order.products || []).forEach(item => {
+    products.forEach(item => {
       worksheet.addRow({
         order_id: order._id,
         TCRNumber: order.TCRNumber,
@@ -264,10 +262,11 @@ async function generateOrdersExcel(orders) {
         companyCut: order.companyCut,
         outstandingAmount: order.outstandingAmount,
 
-        product_name: item.product?.name,
-        unitOfMeasure: item.product?.unitOfMeasure,
-        price: item.product.price,
-        quantity: item.quantity
+        // PRODUCT LEVEL (safe handling)
+        product_name: item?.product?.name || "",
+        unitOfMeasure: item?.product?.unitOfMeasure || "",
+        price: item?.product?.price || "",
+        quantity: item?.quantity || ""
       });
     });
   });
@@ -275,5 +274,114 @@ async function generateOrdersExcel(orders) {
   return workbook;
 }
 
+async function generateAllocationsExcel(allocations) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Allocations");
 
-module.exports = { generateOrdersExcel };
+  worksheet.columns = [
+    { header: "Allocation ID", key: "allocation_id", width: 28 },
+    { header: "Allocated At", key: "allocatedAt", width: 22 },
+    { header: "Created At", key: "createdAt", width: 22 },
+    { header: "Updated At", key: "updatedAt", width: 22 },
+
+    // PRODUCT
+    { header: "Product ID", key: "product_id", width: 28 },
+    { header: "Product Name", key: "product_name", width: 22 },
+    { header: "Unit Of Measure", key: "unitOfMeasure", width: 18 },
+    { header: "Product Price", key: "product_price", width: 18 },
+
+    // TECHNICIAN
+    { header: "Technician ID", key: "technician_id", width: 28 },
+    { header: "Technician Name", key: "technician_name", width: 22 },
+    { header: "Technician Phone", key: "technician_phone", width: 18 },
+    { header: "Technician Email", key: "technician_email", width: 28 },
+
+    // ALLOCATION
+    { header: "Quantity Allocated", key: "quantity", width: 18 },
+  
+  ];
+
+  // Date formatting
+  worksheet.getColumn("allocatedAt").numFmt = "dd-mm-yyyy";
+  worksheet.getColumn("createdAt").numFmt = "dd-mm-yyyy";
+  worksheet.getColumn("updatedAt").numFmt = "dd-mm-yyyy";
+
+  allocations.forEach(allocation => {
+    worksheet.addRow({
+      allocation_id: allocation._id,
+      allocatedAt: allocation.allocatedAt,
+      createdAt: allocation.createdAt,
+      updatedAt: allocation.updatedAt,
+
+      product_id: allocation.product?._id || "",
+      product_name: allocation.product?.name || "",
+      unitOfMeasure: allocation.product?.unitOfMeasure || "",
+      product_price: allocation.product?.price || "",
+
+      technician_id: allocation.technician?._id || "",
+      technician_name: allocation.technician?.name || "",
+      technician_phone: allocation.technician?.phone || "",
+      technician_email: allocation.technician?.email || "",
+
+      quantity: allocation.quantity
+    });
+  });
+
+  return workbook;
+}
+
+module.exports = { generateOrdersExcel, generateAllocationsExcel };
+
+
+// (order.products || []).forEach(item => {
+    //   worksheet.addRow({
+    //     order_id: order._id,
+    //     TCRNumber: order.TCRNumber,
+    //     status: order.status,
+    //     createdAt: order.createdAt,
+    //     completionDate: order.completionDate,
+    //     remarks: order.remarks,
+
+    //     company_id: order.company?._id,
+    //     company_name: order.company?.name,
+    //     company_install_charge: order.company?.installationCharge,
+
+    //     tech_name: order.technician?.name,
+    //     tech_phone: order.technician?.phone,
+    //     tech_email: order.technician?.email,
+    //     tech_serviceRate: order.technician?.serviceRate,
+    //     tech_miscShare: order.technician?.miscShare,
+
+    //     cust_name: order.customer?.name,
+    //     cust_phone: order.customer?.contact?.phone,
+    //     cust_altPhone: order.customer?.contact?.alternatePhone,
+    //     cust_street: order.customer?.address?.street,
+    //     cust_city: order.customer?.address?.city,
+    //     cust_state: order.customer?.address?.state,
+    //     cust_pincode: order.customer?.address?.pincode,
+
+    //     installationCharge: order.installationCharge,
+    //     freeInstallation: order.freeInstallation,
+    //     fittingCost: order.fittingCost,
+    //     miscCost: order.miscellaneousCost,
+
+    //     discountType: order.discount?.type,
+    //     discountValue: order.discount?.value,
+    //     discountAmount: order.discountAmount,
+    //     discountApproved: order.discountApproved,
+    //     discountApprovedBy: order.discountApprovedBy,
+    //     discountOwner: order.discountSplit?.ownerPercentage,
+    //     discountTech: order.discountSplit?.technicianPercentage,
+
+    //     totalAmount: order.totalAmount,
+    //     netAmount: order.netAmount,
+    //     technicianCut: order.technicianCut,
+    //     companyCut: order.companyCut,
+    //     outstandingAmount: order.outstandingAmount,
+
+    //     product_name: item.product?.name,
+    //     unitOfMeasure: item.product?.unitOfMeasure,
+    //     price: item.product.price,
+    //     quantity: item.quantity
+    //   });
+    // });

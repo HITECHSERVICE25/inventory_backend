@@ -15,4 +15,10 @@ router.get(
   allocationController.getAllocationLogs
 );
 
+router.get(
+  '/export',
+  protect,
+  allocationController.exportAllocations
+);
+
 module.exports = router;

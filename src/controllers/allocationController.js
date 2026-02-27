@@ -1,4 +1,5 @@
 const allocationService = require('../services/allocationService');
+const { generateAllocationsExcel } = require('../utils/excel.helper');
 
 exports.allocateProducts = async (req, res, next) => {
   try {
@@ -22,6 +23,37 @@ exports.getAllocationLogs = async (req, res, next) => {
       data: result.data,
       pagination: result.pagination
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// controllers/allocation.controller.js
+
+exports.exportAllocations = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const allocations = await allocationService.exportAllocations({
+      startDate,
+      endDate
+    });
+
+    const workbook = await generateAllocationsExcel(allocations);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=allocations.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
   } catch (error) {
     next(error);
   }

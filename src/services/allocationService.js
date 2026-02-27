@@ -94,6 +94,35 @@ class AllocationService {
         throw error;
       }
     }
+
+    // services/allocation.service.js
+
+async exportAllocations({ startDate, endDate }) {
+  try {
+    if (!startDate || !endDate) {
+      throw new Error("Start date and end date are required for export");
+    }
+
+    const filter = {
+      allocatedAt: {
+        $gte: new Date(startDate),
+        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+      }
+    };
+
+    const allocations = await AllocationLog.find(filter)
+      .populate("product")
+      .populate("technician")
+      .sort({ allocatedAt: -1 })
+      .lean();
+
+    return allocations;
+
+  } catch (error) {
+    logger.error("Error exporting allocations:", error);
+    throw new Error("Failed to export allocations");
+  }
+}
 }
 
 module.exports = new AllocationService();

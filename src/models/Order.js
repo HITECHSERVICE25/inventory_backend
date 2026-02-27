@@ -56,7 +56,7 @@ const orderSchema = new mongoose.Schema({
     quantity: Number,
     basePrice: Number,
     salePrice: Number,
-    technicianPercentage: Number
+    techComm: Number
   }],
   
   // Calculated Fields
