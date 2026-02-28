@@ -346,6 +346,33 @@ async getAllPayments(options = {}) {
       throw error;
     }
   }
+
+  async exportPayments({ startDate, endDate }) {
+  try {
+    if (!startDate || !endDate) {
+      throw new Error("Start date and end date are required for export");
+    }
+
+    const filter = {
+      collectedAt: {
+        $gte: new Date(startDate),
+        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+      }
+    };
+
+    const payments = await Payment.find(filter)
+      .populate("technician")
+      .populate("receivedBy")
+      .sort({ collectedAt: -1 })
+      .lean();
+
+    return payments;
+
+  } catch (error) {
+    logger.error("Error exporting payments:", error);
+    throw new Error("Failed to export payments");
+  }
+}
 }
 
 module.exports = new PaymentService();

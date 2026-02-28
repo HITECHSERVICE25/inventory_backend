@@ -330,7 +330,72 @@ async function generateAllocationsExcel(allocations) {
   return workbook;
 }
 
-module.exports = { generateOrdersExcel, generateAllocationsExcel };
+async function generatePaymentsExcel(payments) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Payments");
+
+  worksheet.columns = [
+    // PAYMENT INFO
+    { header: "Payment ID", key: "payment_id", width: 28 },
+    { header: "Collected At", key: "collectedAt", width: 22 },
+    { header: "Created At", key: "createdAt", width: 22 },
+    { header: "Updated At", key: "updatedAt", width: 22 },
+
+    // TECHNICIAN
+    { header: "Technician ID", key: "technician_id", width: 28 },
+    { header: "Technician Name", key: "technician_name", width: 22 },
+    { header: "Technician Phone", key: "technician_phone", width: 18 },
+    { header: "Technician Email", key: "technician_email", width: 28 },
+
+    // PAYMENT DETAILS
+    { header: "Amount", key: "amount", width: 18 },
+    { header: "Method", key: "method", width: 18 },
+    { header: "Reference", key: "reference", width: 24 },
+    { header: "Status", key: "status", width: 18 },
+
+    // RECEIVED BY (USER)
+    { header: "Received By ID", key: "receivedBy_id", width: 28 },
+    { header: "Received By Name", key: "receivedBy_name", width: 22 },
+    { header: "Received By Email", key: "receivedBy_email", width: 28 },
+
+    // NOTES
+    { header: "Notes", key: "notes", width: 30 },
+  ];
+
+  // Date formatting (same as allocation)
+  worksheet.getColumn("collectedAt").numFmt = "dd-mm-yyyy";
+  worksheet.getColumn("createdAt").numFmt = "dd-mm-yyyy";
+  worksheet.getColumn("updatedAt").numFmt = "dd-mm-yyyy";
+
+  payments.forEach(payment => {
+    worksheet.addRow({
+      payment_id: payment._id,
+      collectedAt: payment.collectedAt,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+
+      technician_id: payment.technician?._id || "",
+      technician_name: payment.technician?.name || "",
+      technician_phone: payment.technician?.phone || "",
+      technician_email: payment.technician?.email || "",
+
+      amount: payment.amount,
+      method: payment.method,
+      reference: payment.reference || "",
+      status: payment.status,
+
+      receivedBy_id: payment.receivedBy?._id || "",
+      receivedBy_name: payment.receivedBy?.name || "",
+      receivedBy_email: payment.receivedBy?.email || "",
+
+      notes: payment.notes || ""
+    });
+  });
+
+  return workbook;
+}
+
+module.exports = { generateOrdersExcel, generateAllocationsExcel, generatePaymentsExcel };
 
 
 // (order.products || []).forEach(item => {

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const paymentService = require('../services/paymentService');
+const { generatePaymentsExcel } = require('../utils/excel.helper');
 
 exports.recordPayment = async (req, res, next) => {
   try {
@@ -40,27 +41,6 @@ exports.getPaymentHistory = async (req, res, next) => {
   }
 };
 
-exports.getPaymentDetails = async (req, res, next) => {
-    const { paymentId } = req.params;
-
-    const paymentDetails = await paymentService.getPaymentDetails(paymentId);
-    
-    res.status(200).json({
-      success: true,
-      data: paymentDetails
-    });
-
-    try {
-    const { paymentId } = req.params;
-    const paymentDetails = await paymentService.getPaymentDetails(paymentId);
-    res.status(200).json({ 
-      success: true,
-      data: paymentDetails
-    });
-  } catch (error) {
-    next(error);
-  }
-  },
 
 exports.getAllTechniciansWithBalances = async (req, res, next) => {
   try {
@@ -214,6 +194,37 @@ exports.getPaymentDetails = async (req, res, next) => {
       });
     }
 
+    next(error);
+  }
+
+  
+};
+
+exports.exportPayments = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const payments = await paymentService.exportPayments({
+      startDate,
+      endDate
+    });
+
+    const workbook = await generatePaymentsExcel(payments);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=payments.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
     next(error);
   }
 };

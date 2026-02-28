@@ -37,6 +37,10 @@ router.get(
   paymentController.getAllPayments
 );
 
+router.get('/balances', protect, paymentController.getAllTechniciansWithBalances);
+
+router.get('/export', protect, paymentController.exportPayments);
+
 // Get single payment details by ID
 router.get(
   '/:paymentId',
@@ -44,7 +48,6 @@ router.get(
   paymentController.getPaymentDetails
 );
 
-router.get('/balances', protect, paymentController.getAllTechniciansWithBalances);
 
 
 module.exports = router;
