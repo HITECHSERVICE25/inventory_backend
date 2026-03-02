@@ -34,6 +34,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/v1/examples', require('./routes/exampleRoutes'));
 app.use('/api/v1/auth', require('./routes/authRoutes'));
+app.use('/api/v1/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/v1/company', require('./routes/companyRoutes'));
 app.use('/api/v1/products', require('./routes/productRoutes'));
 app.use('/api/v1/technicians', require('./routes/technicianRoutes'));
