@@ -47,37 +47,73 @@ class ProductService {
     }
   }
 
-  async listProducts(filter = {}, options = {}) {
-    try {
+  // async listProducts(filter = {}, options = {}) {
+  //   try {
 
-      const { page = 1, limit = 10, sort = '-createdAt', ...filters } = options;
-      console.log('Filter----------:', filter, (page - 1) * limit);
+  //     const { page = 1, limit = 10, sort = '-createdAt', ...filters } = options;
+  //     console.log('Filter----------:', filter, (page - 1) * limit);
 
       
-      const query = Product.find(filters)
-        .sort(sort)
-        .skip((page - 1) * limit)
-        .limit(Number(limit));
+  //     const query = Product.find(filters)
+  //       .sort(sort)
+  //       .skip((page - 1) * limit)
+  //       .limit(Number(limit));
 
-      const [products, total] = await Promise.all([
-        query.exec(),
-        Product.countDocuments(filters)
-      ]);
+  //     const [products, total] = await Promise.all([
+  //       query.exec(),
+  //       Product.countDocuments(filters)
+  //     ]);
 
-      return {
-        data: products,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      };
-    } catch (error) {
-      logger.error('Error listing products', { error: error.message });
-      throw error;
-    }
+  //     return {
+  //       data: products,
+  //       pagination: {
+  //         page: Number(page),
+  //         limit: Number(limit),
+  //         total,
+  //         totalPages: Math.ceil(total / limit)
+  //       }
+  //     };
+  //   } catch (error) {
+  //     logger.error('Error listing products', { error: error.message });
+  //     throw error;
+  //   }
+  // }
+
+  async listProducts(filter = {}, options = {}) {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      sort = '-createdAt'
+    } = options;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const query = Product.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit));
+
+    const [products, total] = await Promise.all([
+      query.exec(),
+      Product.countDocuments(filter)
+    ]);
+
+    return {
+      data: products,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        totalPages: Math.ceil(total / Number(limit))
+      }
+    };
+
+  } catch (error) {
+    logger.error('Error listing products', { error: error.message });
+    throw error;
   }
+}
 
   async updateStock(productId, quantity) {
     await Product.findByIdAndUpdate(

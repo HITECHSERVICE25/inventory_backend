@@ -38,12 +38,19 @@ exports.deleteProduct = async (req, res, next) => {
 
 exports.listProducts = async (req, res, next) => {
   try {
-    const result = await productService.listProducts(req.query);
+    const { page, limit, sort, ...filters } = req.query;
+
+    const result = await productService.listProducts(
+      filters,                 // actual filter fields
+      { page, limit, sort }    // pagination options
+    );
+
     res.status(200).json({ 
       success: true,
       data: result.data,
       pagination: result.pagination
     });
+
   } catch (error) {
     next(error);
   }
