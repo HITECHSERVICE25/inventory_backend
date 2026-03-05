@@ -7,7 +7,7 @@ class PaymentService {
   async recordTechnicianPayment(technicianId, paymentData) {
     const session = await mongoose.startSession();
     session.startTransaction();
-    
+
     try {
       // Verify technician exists
       const technician = await Technician.findById(technicianId).session(session);
@@ -40,22 +40,22 @@ class PaymentService {
       );
 
       await session.commitTransaction();
-      logger.info('Technician payment recorded successfully', { 
-        technicianId, 
+      logger.info('Technician payment recorded successfully', {
+        technicianId,
         amount: paymentData.amount,
         paymentId: payment[0]._id
       });
-      
+
       return {
         payment: payment[0],
         newBalance: technician.outstandingBalance - paymentData.amount
       };
     } catch (error) {
       await session.abortTransaction();
-      logger.error('Technician payment failed', { 
-        technicianId, 
+      logger.error('Technician payment failed', {
+        technicianId,
         error: error.message,
-        paymentData 
+        paymentData
       });
       throw error;
     } finally {
@@ -68,7 +68,7 @@ class PaymentService {
       // Get technician's current outstanding balance
       const technician = await Technician.findById(technicianId)
         .select('name outstandingBalance dueFromDiscounts');
-      
+
       if (!technician) {
         throw new Error('Technician not found');
       }
@@ -80,9 +80,9 @@ class PaymentService {
         dueFromDiscounts: technician.dueFromDiscounts
       };
     } catch (error) {
-      logger.error('Error fetching outstanding balance', { 
-        technicianId, 
-        error: error.message 
+      logger.error('Error fetching outstanding balance', {
+        technicianId,
+        error: error.message
       });
       throw error;
     }
@@ -92,7 +92,7 @@ class PaymentService {
     try {
       const { page = 1, limit = 10 } = options;
       const skip = (page - 1) * limit;
-      
+
       const [payments, total] = await Promise.all([
         Payment.find({ technician: technicianId })
           .populate('receivedBy', 'name')
@@ -112,188 +112,188 @@ class PaymentService {
         }
       };
     } catch (error) {
-      logger.error('Error fetching payment history', { 
-        technicianId, 
-        error: error.message 
+      logger.error('Error fetching payment history', {
+        technicianId,
+        error: error.message
       });
       throw error;
     }
   }
 
   // Add this method to your paymentService class
-async getAllPayments(options = {}) {
-  try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      technicianId, 
-      startDate, 
-      endDate,
-      method,
-      sortBy = 'collectedAt',
-      sortOrder = 'desc'
-    } = options;
+  async getAllPayments(options = {}) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        technicianId,
+        startDate,
+        endDate,
+        method,
+        sortBy = 'collectedAt',
+        sortOrder = 'desc'
+      } = options;
 
-    // Build filter for payments
-    const filter = {};
-    
-    if (technicianId) {
-      filter.technician = technicianId;
-    }
-    
-    if (startDate || endDate) {
-      filter.collectedAt = {};
-      if (startDate) {
-        filter.collectedAt.$gte = new Date(startDate);
+      // Build filter for payments
+      const filter = {};
+
+      if (technicianId) {
+        filter.technician = technicianId;
       }
-      if (endDate) {
-        filter.collectedAt.$lte = new Date(endDate);
+
+      if (startDate || endDate) {
+        filter.collectedAt = {};
+        if (startDate) {
+          filter.collectedAt.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          filter.collectedAt.$lte = new Date(endDate);
+        }
       }
-    }
-    
-    if (method) {
-      filter.method = method;
-    }
 
-    // Calculate skip for pagination
-    const skip = (page - 1) * limit;
-    const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+      if (method) {
+        filter.method = method;
+      }
 
-    // Get payments with pagination using Payment model directly
-    const payments = await Payment.find(filter)
-      .populate('technician', 'name phone email')
-      .populate('receivedBy', 'name email')
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean();
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+      const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    // Get total count for pagination
-    const total = await Payment.countDocuments(filter);
+      // Get payments with pagination using Payment model directly
+      const payments = await Payment.find(filter)
+        .populate('technician', 'name phone email')
+        .populate('receivedBy', 'name email')
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean();
 
-    // Calculate summary statistics
-    const summary = {
-      totalAmount: payments.reduce((sum, payment) => sum + payment.amount, 0),
-      totalCount: payments.length,
-      averageAmount: payments.length > 0 
-        ? payments.reduce((sum, payment) => sum + payment.amount, 0) / payments.length 
-        : 0
-    };
+      // Get total count for pagination
+      const total = await Payment.countDocuments(filter);
 
-    const pagination = {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total,
-      pages: Math.ceil(total / limit)
-    };
+      // Calculate summary statistics
+      const summary = {
+        totalAmount: payments.reduce((sum, payment) => sum + payment.amount, 0),
+        totalCount: payments.length,
+        averageAmount: payments.length > 0
+          ? payments.reduce((sum, payment) => sum + payment.amount, 0) / payments.length
+          : 0
+      };
 
-    return {
-      payments,
-      summary,
-      pagination
-    };
-  } catch (error) {
-    logger.error('Error fetching payments', { 
-      error: error.message, 
-      options 
-    });
-    throw error;
-  }
-}
-
-// // Main service method to get all technicians with balances
-//   async getAllTechniciansWithBalances(options = {}) {
-//     try {
-//       const { page = 1, limit = 20, search } = options;
-
-//       // Build filter for technicians
-//       const filter = {};
-//       if (search) {
-//         filter.$or = [
-//           { name: { $regex: search, $options: 'i' } },
-//           { phone: { $regex: search, $options: 'i' } },
-//           { email: { $regex: search, $options: 'i' } }
-//         ];
-//       }
-
-//       // Get technicians with pagination using the service method
-//       const result = await TechnicianService.listTechnicians({
-//         ...filter,
-//         page: parseInt(page),
-//         limit: parseInt(limit)
-//       });
-
-//       // Calculate summary statistics
-//       const summary = {
-//         totalTechnicians: result.data.length,
-//         totalOutstandingBalance: result.data.reduce((sum, tech) => sum + (tech.outstandingBalance || 0), 0),
-//         totalDueFromDiscounts: result.data.reduce((sum, tech) => sum + (tech.dueFromDiscounts || 0), 0),
-//         activeTechnicians: result.data.filter(tech => !tech.isBlocked).length,
-//         blockedTechnicians: result.data.filter(tech => tech.isBlocked).length
-//       };
-
-//       return {
-//         technicians: result.data,
-//         summary,
-//         pagination: result.pagination
-//       };
-//     } catch (error) {
-//       logger.error('Error fetching technicians with balances', { 
-//         error: error.message, 
-//         options 
-//       });
-//       throw error;
-//     }
-//   }
-
-  async getAllTechniciansWithBalances(options = {}) {
-  try {
-    const { page = 1, limit = 20, search } = options;
-
-    // Build filter
-    const filter = {};
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    // Pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Fetch technicians
-    const technicians = await Technician.find(filter)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Technician.countDocuments(filter);
-
-    // Summary stats
-    const summary = {
-      totalTechnicians: technicians.length,
-      totalOutstandingBalance: technicians.reduce((sum, t) => sum + (t.outstandingBalance || 0), 0),
-      totalDueFromDiscounts: technicians.reduce((sum, t) => sum + (t.dueFromDiscounts || 0), 0),
-      activeTechnicians: technicians.filter(t => !t.isBlocked).length,
-      blockedTechnicians: technicians.filter(t => t.isBlocked).length
-    };
-
-    return {
-      technicians,
-      summary,
-      pagination: {
-        total,
+      const pagination = {
         page: parseInt(page),
         limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit)
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching technicians with balances', error);
-    throw error;
+        total,
+        pages: Math.ceil(total / limit)
+      };
+
+      return {
+        payments,
+        summary,
+        pagination
+      };
+    } catch (error) {
+      logger.error('Error fetching payments', {
+        error: error.message,
+        options
+      });
+      throw error;
+    }
   }
-}
+
+  // // Main service method to get all technicians with balances
+  //   async getAllTechniciansWithBalances(options = {}) {
+  //     try {
+  //       const { page = 1, limit = 20, search } = options;
+
+  //       // Build filter for technicians
+  //       const filter = {};
+  //       if (search) {
+  //         filter.$or = [
+  //           { name: { $regex: search, $options: 'i' } },
+  //           { phone: { $regex: search, $options: 'i' } },
+  //           { email: { $regex: search, $options: 'i' } }
+  //         ];
+  //       }
+
+  //       // Get technicians with pagination using the service method
+  //       const result = await TechnicianService.listTechnicians({
+  //         ...filter,
+  //         page: parseInt(page),
+  //         limit: parseInt(limit)
+  //       });
+
+  //       // Calculate summary statistics
+  //       const summary = {
+  //         totalTechnicians: result.data.length,
+  //         totalOutstandingBalance: result.data.reduce((sum, tech) => sum + (tech.outstandingBalance || 0), 0),
+  //         totalDueFromDiscounts: result.data.reduce((sum, tech) => sum + (tech.dueFromDiscounts || 0), 0),
+  //         activeTechnicians: result.data.filter(tech => !tech.isBlocked).length,
+  //         blockedTechnicians: result.data.filter(tech => tech.isBlocked).length
+  //       };
+
+  //       return {
+  //         technicians: result.data,
+  //         summary,
+  //         pagination: result.pagination
+  //       };
+  //     } catch (error) {
+  //       logger.error('Error fetching technicians with balances', { 
+  //         error: error.message, 
+  //         options 
+  //       });
+  //       throw error;
+  //     }
+  //   }
+
+  async getAllTechniciansWithBalances(options = {}) {
+    try {
+      const { page = 1, limit = 20, search } = options;
+
+      // Build filter
+      const filter = {};
+      if (search) {
+        filter.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      // Pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Fetch technicians
+      const technicians = await Technician.find(filter)
+        .skip(skip)
+        .limit(parseInt(limit));
+
+      const total = await Technician.countDocuments(filter);
+
+      // Summary stats
+      const summary = {
+        totalTechnicians: technicians.length,
+        totalOutstandingBalance: technicians.reduce((sum, t) => sum + (t.outstandingBalance || 0), 0),
+        totalDueFromDiscounts: technicians.reduce((sum, t) => sum + (t.dueFromDiscounts || 0), 0),
+        activeTechnicians: technicians.filter(t => !t.isBlocked).length,
+        blockedTechnicians: technicians.filter(t => t.isBlocked).length
+      };
+
+      return {
+        technicians,
+        summary,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching technicians with balances', error);
+      throw error;
+    }
+  }
 
   // Additional method to get technician balance details
   async getTechnicianBalanceDetails(technicianId) {
@@ -318,9 +318,9 @@ async getAllPayments(options = {}) {
         }
       };
     } catch (error) {
-      logger.error('Error fetching technician balance details', { 
-        technicianId, 
-        error: error.message 
+      logger.error('Error fetching technician balance details', {
+        technicianId,
+        error: error.message
       });
       throw error;
     }
@@ -339,40 +339,84 @@ async getAllPayments(options = {}) {
 
       return payment;
     } catch (error) {
-      logger.error('Error fetching payment details', { 
-        paymentId, 
-        error: error.message 
+      logger.error('Error fetching payment details', {
+        paymentId,
+        error: error.message
       });
       throw error;
     }
   }
 
   async exportPayments({ startDate, endDate }) {
-  try {
-    if (!startDate || !endDate) {
-      throw new Error("Start date and end date are required for export");
-    }
-
-    const filter = {
-      collectedAt: {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+    try {
+      if (!startDate || !endDate) {
+        throw new Error("Start date and end date are required for export");
       }
-    };
 
-    const payments = await Payment.find(filter)
-      .populate("technician")
-      .populate("receivedBy")
-      .sort({ collectedAt: -1 })
-      .lean();
+      const filter = {
+        collectedAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+        }
+      };
 
-    return payments;
+      const payments = await Payment.find(filter)
+        .populate("technician")
+        .populate("receivedBy")
+        .sort({ collectedAt: -1 })
+        .lean();
 
-  } catch (error) {
-    logger.error("Error exporting payments:", error);
-    throw new Error("Failed to export payments");
+      return payments;
+
+      return payments;
+    } catch (error) {
+      logger.error("Error exporting payments:", error);
+      throw new Error("Failed to export payments");
+    }
   }
-}
+
+  async getPaymentStats() {
+    try {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const [totalStats, monthlyStats] = await Promise.all([
+        Payment.aggregate([
+          { $match: { status: 'collected' } },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: '$amount' },
+              count: { $sum: 1 }
+            }
+          }
+        ]),
+        Payment.aggregate([
+          {
+            $match: {
+              status: 'collected',
+              collectedAt: { $gte: firstDayOfMonth }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              totalAmount: { $sum: '$amount' }
+            }
+          }
+        ])
+      ]);
+
+      return {
+        totalCollected: totalStats[0]?.totalAmount || 0,
+        transactionCount: totalStats[0]?.count || 0,
+        monthlyCollected: monthlyStats[0]?.totalAmount || 0
+      };
+    } catch (error) {
+      logger.error('Error calculating payment stats', { error: error.message });
+      throw error;
+    }
+  }
 }
 
 module.exports = new PaymentService();

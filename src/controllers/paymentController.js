@@ -9,7 +9,7 @@ exports.recordPayment = async (req, res, next) => {
       ...req.body,
       receivedBy: req.user.id // Assuming user ID is available in req.user
     };
-    
+
     const result = await paymentService.recordTechnicianPayment(technicianId, paymentData);
     res.status(201).json({ success: true, data: result });
   } catch (error) {
@@ -31,7 +31,7 @@ exports.getPaymentHistory = async (req, res, next) => {
   try {
     const { technicianId } = req.params;
     const result = await paymentService.getPaymentHistory(technicianId, req.query);
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       data: result.payments,
       pagination: result.pagination
@@ -45,7 +45,7 @@ exports.getPaymentHistory = async (req, res, next) => {
 exports.getAllTechniciansWithBalances = async (req, res, next) => {
   try {
     const result = await paymentService.getAllTechniciansWithBalances(req.query);
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
       data: result.technicians,
       pagination: result.pagination
@@ -57,11 +57,11 @@ exports.getAllTechniciansWithBalances = async (req, res, next) => {
 
 exports.getAllPayments = async (req, res, next) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      technicianId, 
-      startDate, 
+    const {
+      page = 1,
+      limit = 10,
+      technicianId,
+      startDate,
       endDate,
       method,
       sortBy = 'collectedAt',
@@ -71,7 +71,7 @@ exports.getAllPayments = async (req, res, next) => {
     // Validate pagination parameters
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     if (isNaN(pageNum) || pageNum < 1) {
       return res.status(400).json({
         success: false,
@@ -115,16 +115,16 @@ exports.getAllPayments = async (req, res, next) => {
 // In your technicianController.js
 exports.getAllTechniciansWithBalances = async (req, res, next) => {
   try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      search 
+    const {
+      page = 1,
+      limit = 20,
+      search
     } = req.query;
 
     // Validate pagination parameters
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     if (isNaN(pageNum) || pageNum < 1) {
       return res.status(400).json({
         success: false,
@@ -197,7 +197,7 @@ exports.getPaymentDetails = async (req, res, next) => {
     next(error);
   }
 
-  
+
 };
 
 exports.exportPayments = async (req, res, next) => {
@@ -225,6 +225,16 @@ exports.exportPayments = async (req, res, next) => {
     res.end();
 
   } catch (error) {
+    next(error);
+  }
+};
+
+exports.getPaymentSummary = async (req, res, next) => {
+  try {
+    const stats = await paymentService.getPaymentStats();
+    res.status(200).json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error in getPaymentSummary:', error);
     next(error);
   }
 };
