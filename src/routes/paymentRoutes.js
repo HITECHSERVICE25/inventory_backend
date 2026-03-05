@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
-const { 
+const {
   validateRecordPayment
 } = require('../middlewares/validations/paymentValidation');
 const { protect, authorize } = require('../middlewares/authMiddleware');
@@ -40,6 +40,7 @@ router.get(
 router.get('/balances', protect, paymentController.getAllTechniciansWithBalances);
 
 router.get('/export', protect, paymentController.exportPayments);
+router.get('/summary', protect, paymentController.getPaymentSummary);
 
 // Get single payment details by ID
 router.get(
