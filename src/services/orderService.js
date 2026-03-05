@@ -5,641 +5,641 @@ const InstallationCharge = require('../models/InstallationCharge');
 const Product = require('../models/Product');
 const CommissionAgreement = require("../models/CommissionAgreement");
 
-const  logger  = require('../utils/logger');
+const logger = require('../utils/logger');
 const Technician = require('../models/Technician');
 const Company = require('../models/Company');
 
 class OrderService {
-    async createDraftOrder(orderData) {
-      try{
+  async createDraftOrder(orderData) {
+    try {
 
-        let installationCharge;
-        if(orderData?.freeInstallation){
-          installationCharge = 0;
-        } else {
-          const company = await Company.findById(orderData.company);
-          installationCharge = company.installationCharge;
-        }
-        
-        console.log("orderData:", orderData);
-        const order = await Order.create({
-          ...orderData,
-          installationCharge: installationCharge,
-          status: 'draft',
-          customer: {
-            name: orderData.customer.name,
-            contact: {
-              phone: orderData.customer.contact.phone,
-              alternatePhone: orderData.customer.contact.alternatePhone
-            },
-            address: {
-              street: orderData.customer.address.street,
-              city: orderData.customer.address.city,
-              state: orderData.customer.address.state,
-              pincode: orderData.customer.address.pincode
-            }
+      let installationCharge;
+      if (orderData?.freeInstallation) {
+        installationCharge = 0;
+      } else {
+        const company = await Company.findById(orderData.company);
+        installationCharge = company.installationCharge;
+      }
+
+      console.log("orderData:", orderData);
+      const order = await Order.create({
+        ...orderData,
+        installationCharge: installationCharge,
+        status: 'draft',
+        customer: {
+          name: orderData.customer.name,
+          contact: {
+            phone: orderData.customer.contact.phone,
+            alternatePhone: orderData.customer.contact.alternatePhone
+          },
+          address: {
+            street: orderData.customer.address.street,
+            city: orderData.customer.address.city,
+            state: orderData.customer.address.state,
+            pincode: orderData.customer.address.pincode
           }
+        }
+      });
+
+      return order.populate('company technician');
+    } catch (error) {
+      logger.error('Order creation failed', { error: error.message });
+
+      // Handle duplicate key error
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+
+        // Throw a clean error
+        const customError = new Error(`${field} already exists`);
+        customError.statusCode = 400;
+        throw customError;
+      }
+
+      // For all other errors
+      error.statusCode = 500;
+      throw error;
+    }
+
+  }
+
+
+  async updateDraftOrder(orderId, orderData) {
+    try {
+      // 1. Find existing draft order
+      const order = await Order.findOne({
+        _id: orderId,
+        status: 'draft'
+      });
+
+      if (!order) {
+        throw new Error('Draft order not found or already completed');
+      }
+
+
+
+      let installationCharge;
+      if (orderData?.freeInstallation) {
+        installationCharge = 0;
+      } else {
+        const company = await Company.findById(orderData.company);
+        installationCharge = company.installationCharge;
+      }
+
+      order.freeInstallation = orderData.freeInstallation;
+      order.installationCharge = installationCharge;
+
+      // 2. Update core order fields
+      if (orderData.TCRNumber !== undefined) order.TCRNumber = orderData.TCRNumber;
+      if (orderData.company !== undefined) order.company = orderData.company;
+      if (orderData.technician !== undefined) order.technician = orderData.technician;
+
+      // 3. Update customer information (full nested update)
+      if (orderData.customer) {
+        // Name
+        if (orderData.customer.name !== undefined) {
+          order.customer.name = orderData.customer.name;
+        }
+
+        // Contact
+        if (orderData.customer.contact) {
+          if (orderData.customer.contact.phone !== undefined) {
+            order.customer.contact.phone = orderData.customer.contact.phone;
+          }
+          if (orderData.customer.contact.alternatePhone !== undefined) {
+            order.customer.contact.alternatePhone = orderData.customer.contact.alternatePhone;
+          }
+        }
+
+        // Address
+        if (orderData.customer.address) {
+          if (orderData.customer.address.street !== undefined) {
+            order.customer.address.street = orderData.customer.address.street;
+          }
+          if (orderData.customer.address.city !== undefined) {
+            order.customer.address.city = orderData.customer.address.city;
+          }
+          if (orderData.customer.address.state !== undefined) {
+            order.customer.address.state = orderData.customer.address.state;
+          }
+          if (orderData.customer.address.pincode !== undefined) {
+            order.customer.address.pincode = orderData.customer.address.pincode;
+          }
+        }
+      }
+
+      // 4. Save and return populated order
+      await order.save();
+      return Order.findById(orderId).populate('company technician');
+    } catch (error) {
+      logger.error('Order creation failed', { error: error.message });
+
+      // Handle duplicate key error
+      if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern)[0];
+
+        // Throw a clean error
+        const customError = new Error(`${field} already exists`);
+        customError.statusCode = 400;
+        throw customError;
+      }
+
+      // For all other errors
+      error.statusCode = 500;
+      throw error;
+    }
+
+  }
+
+
+  async submitOrderCompletion(orderId, completionData) {
+    try {
+      console.log("========== ORDER COMPLETION START ==========");
+      console.log("Order ID:", orderId);
+      console.log("Incoming completionData:", JSON.stringify(completionData, null, 2));
+
+      const order = await Order.findById(orderId);
+
+      if (!order) {
+        const err = new Error("Order not found");
+        err.statusCode = 404;
+        throw err;
+      }
+
+      console.log("Order found. Technician:", order.technician);
+
+      /* ================= PROCESS PRODUCTS ================= */
+
+      const processedProducts = [];
+
+      for (const item of completionData.products || []) {
+
+        console.log("\n------ Processing Product ------");
+        console.log("Incoming item:", item);
+
+        const product = await Product.findById(item.product);
+
+        if (!product) {
+          console.log("❌ Product not found for ID:", item.product);
+          continue;
+        }
+
+        console.log("Product found:", product._id);
+        console.log("Product current price:", product.price);
+
+        const quantity = Number(item.quantity) || 0;
+        console.log("Parsed quantity:", quantity);
+
+        const salePrice =
+          Number(item.salePrice ?? product.price) || 0;
+
+        console.log("Resolved salePrice:", salePrice);
+
+        // Fetch agreement
+        const agreement = await CommissionAgreement.findOne({
+          technician: order.technician,
+          product: item.product
         });
-        
-        return order.populate('company technician');
-      } catch (error) {
-            logger.error('Order creation failed', { error: error.message });
-            
-          // Handle duplicate key error
-          if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
-      
-            // Throw a clean error
-            const customError = new Error(`${field} already exists`);
-            customError.statusCode = 400;
-            throw customError;
-          }
-      
-          // For all other errors
-          error.statusCode = 500;
-          throw error;
-          }
-        
+
+        console.log("Agreement query:", {
+          technician: order.technician,
+          product: item.product
+        });
+
+        console.log("Agreement found:", agreement);
+
+        const commissionPerUnit =
+          agreement ? Number(agreement.amount) || 0 : 0;
+
+        console.log("Agreement amount (raw):", agreement?.amount);
+        console.log("Commission per unit (parsed):", commissionPerUnit);
+
+        const techComm = commissionPerUnit * quantity;
+
+        console.log("Calculated techComm:", techComm);
+
+        processedProducts.push({
+          product: item.product,
+          quantity,
+          basePrice: Number(product.price) || 0,
+          salePrice,
+          commissionPerUnit,
+          techComm
+        });
+
+        console.log("Processed product pushed:", processedProducts[processedProducts.length - 1]);
       }
 
+      console.log("\nFinal processedProducts:", processedProducts);
 
-      async updateDraftOrder(orderId, orderData) {
-        try{
-            // 1. Find existing draft order
-  const order = await Order.findOne({ 
-    _id: orderId, 
-    status: 'draft' 
-  });
+      order.products = processedProducts;
 
-  if (!order) {
-    throw new Error('Draft order not found or already completed');
+      /* ================= OTHER COSTS ================= */
+
+      order.miscellaneousCost =
+        Number(completionData.miscellaneousCost) || 0;
+
+      order.fittingCost =
+        Number(completionData.fittingCost) || 0;
+
+      console.log("Misc cost:", order.miscellaneousCost);
+      console.log("Fitting cost:", order.fittingCost);
+
+      /* ================= DISCOUNT ================= */
+
+      order.discount = completionData?.discount;
+      order.completionDate = new Date();
+
+      console.log("Discount:", order.discount);
+
+      if (completionData.discountSplit) {
+        order.discountSplit = {
+          ownerPercentage:
+            Number(completionData.discountSplit.ownerPercentage) || 100,
+          technicianPercentage:
+            Number(completionData.discountSplit.technicianPercentage) || 0
+        };
+
+        console.log("Discount split set:", order.discountSplit);
+      }
+
+      /* ================= STATUS ================= */
+
+      order.status = "pending-approval";
+      console.log("Order status set to:", order.status);
+
+      /* ================= RE-CALCULATE TOTALS ================= */
+
+      console.log("Calling calculateFinancials...");
+      await this.calculateFinancials(order);
+
+      console.log("Financials after calculation:", {
+        technicianCut: order.technicianCut,
+        companyCut: order.companyCut,
+        netAmount: order.netAmount
+      });
+
+      await order.save();
+
+      console.log("Order saved successfully.");
+      console.log("========== ORDER COMPLETION END ==========");
+
+      return Order.findById(orderId)
+        .populate("company technician");
+
+    } catch (error) {
+      logger.error("Order completion failed", {
+        error: error.message
+      });
+
+      error.statusCode = error.statusCode || 500;
+      throw error;
+    }
   }
 
 
 
-   let installationCharge;
-        if(orderData?.freeInstallation){
-          installationCharge = 0;
-        } else {
-          const company = await Company.findById(orderData.company);
-          installationCharge = company.installationCharge;
-        }
-
-  order.freeInstallation = orderData.freeInstallation;
-  order.installationCharge = installationCharge;
-
-  // 2. Update core order fields
-  if (orderData.TCRNumber !== undefined) order.TCRNumber = orderData.TCRNumber;
-  if (orderData.company !== undefined) order.company = orderData.company;
-  if (orderData.technician !== undefined) order.technician = orderData.technician;
-
-  // 3. Update customer information (full nested update)
-  if (orderData.customer) {
-    // Name
-    if (orderData.customer.name !== undefined) {
-      order.customer.name = orderData.customer.name;
-    }
-    
-    // Contact
-    if (orderData.customer.contact) {
-      if (orderData.customer.contact.phone !== undefined) {
-        order.customer.contact.phone = orderData.customer.contact.phone;
-      }
-      if (orderData.customer.contact.alternatePhone !== undefined) {
-        order.customer.contact.alternatePhone = orderData.customer.contact.alternatePhone;
-      }
-    }
-    
-    // Address
-    if (orderData.customer.address) {
-      if (orderData.customer.address.street !== undefined) {
-        order.customer.address.street = orderData.customer.address.street;
-      }
-      if (orderData.customer.address.city !== undefined) {
-        order.customer.address.city = orderData.customer.address.city;
-      }
-      if (orderData.customer.address.state !== undefined) {
-        order.customer.address.state = orderData.customer.address.state;
-      }
-      if (orderData.customer.address.pincode !== undefined) {
-        order.customer.address.pincode = orderData.customer.address.pincode;
-      }
-    }
-  }
-
-  // 4. Save and return populated order
-  await order.save();
-  return Order.findById(orderId).populate('company technician');
-        }catch (error) {
-            logger.error('Order creation failed', { error: error.message });
-            
-          // Handle duplicate key error
-          if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
-      
-            // Throw a clean error
-            const customError = new Error(`${field} already exists`);
-            customError.statusCode = 400;
-            throw customError;
-          }
-      
-          // For all other errors
-          error.statusCode = 500;
-          throw error;
-          }
-  
-}
 
 
-async submitOrderCompletion(orderId, completionData) {
-  try {
-    console.log("========== ORDER COMPLETION START ==========");
-    console.log("Order ID:", orderId);
-    console.log("Incoming completionData:", JSON.stringify(completionData, null, 2));
+  async calculateFinancials(order) {
+    try {
+      const technician = await Technician.findById(order.technician);
 
-    const order = await Order.findById(orderId);
+      const serviceRate = Number(technician?.serviceRate) || 0;
+      const miscSharePct = Math.max(
+        0,
+        Math.min(100, Number(technician?.miscShare) || 0)
+      );
 
-    if (!order) {
-      const err = new Error("Order not found");
-      err.statusCode = 404;
-      throw err;
-    }
+      let productTotal = Number(order.installationCharge);
+      let commissionTotal = 0;
 
-    console.log("Order found. Technician:", order.technician);
+      /* ================= PRODUCTS ================= */
 
-    /* ================= PROCESS PRODUCTS ================= */
+      for (const item of order.products || []) {
 
-    const processedProducts = [];
+        const price = Number(item.salePrice) || 0;
+        const qty = Number(item.quantity) || 0;
 
-    for (const item of completionData.products || []) {
+        // Use frozen sale price
+        productTotal += price * qty;
 
-      console.log("\n------ Processing Product ------");
-      console.log("Incoming item:", item);
-
-      const product = await Product.findById(item.product);
-
-      if (!product) {
-        console.log("❌ Product not found for ID:", item.product);
-        continue;
+        // Use frozen commission snapshot
+        commissionTotal += Number(item.techComm) || 0;
       }
 
-      console.log("Product found:", product._id);
-      console.log("Product current price:", product.price);
+      const fittingCharge = Number(order.fittingCost) || 0;
+      const miscCost = Number(order.miscellaneousCost) || 0;
 
-      const quantity = Number(item.quantity) || 0;
-      console.log("Parsed quantity:", quantity);
+      const techMiscEarning =
+        miscCost * (miscSharePct / 100);
 
-      const salePrice =
-        Number(item.salePrice ?? product.price) || 0;
+      const grossSubtotal =
+        productTotal
+        + miscCost
+        + fittingCharge;
 
-      console.log("Resolved salePrice:", salePrice);
+      /* ================= DISCOUNT ================= */
 
-      // Fetch agreement
-      const agreement = await CommissionAgreement.findOne({
-        technician: order.technician,
-        product: item.product
-      });
+      let discountAmount = 0;
 
-      console.log("Agreement query:", {
-        technician: order.technician,
-        product: item.product
-      });
+      if (order.discount?.type === "percentage") {
+        const pct = Math.max(
+          0,
+          Math.min(100, Number(order.discount.value) || 0)
+        );
+        discountAmount = grossSubtotal * (pct / 100);
+      }
 
-      console.log("Agreement found:", agreement);
+      if (order.discount?.type === "amount") {
+        discountAmount = Math.min(
+          grossSubtotal,
+          Number(order.discount.value) || 0
+        );
+      }
 
-      const commissionPerUnit =
-        agreement ? Number(agreement.amount) || 0 : 0;
+      /* ================= SPLIT ================= */
 
-      console.log("Agreement amount (raw):", agreement?.amount);
-      console.log("Commission per unit (parsed):", commissionPerUnit);
-
-      const techComm = commissionPerUnit * quantity;
-
-      console.log("Calculated techComm:", techComm);
-
-      processedProducts.push({
-        product: item.product,
-        quantity,
-        basePrice: Number(product.price) || 0,
-        salePrice,
-        commissionPerUnit,
-        techComm
-      });
-
-      console.log("Processed product pushed:", processedProducts[processedProducts.length - 1]);
-    }
-
-    console.log("\nFinal processedProducts:", processedProducts);
-
-    order.products = processedProducts;
-
-    /* ================= OTHER COSTS ================= */
-
-    order.miscellaneousCost =
-      Number(completionData.miscellaneousCost) || 0;
-
-    order.fittingCost =
-      Number(completionData.fittingCost) || 0;
-
-    console.log("Misc cost:", order.miscellaneousCost);
-    console.log("Fitting cost:", order.fittingCost);
-
-    /* ================= DISCOUNT ================= */
-
-    order.discount = completionData?.discount;
-    order.completionDate = new Date();
-
-    console.log("Discount:", order.discount);
-
-    if (completionData.discountSplit) {
-      order.discountSplit = {
-        ownerPercentage:
-          Number(completionData.discountSplit.ownerPercentage) || 100,
-        technicianPercentage:
-          Number(completionData.discountSplit.technicianPercentage) || 0
+      const split = order.discountSplit || {
+        ownerPercentage: 100,
+        technicianPercentage: 0
       };
 
-      console.log("Discount split set:", order.discountSplit);
-    }
+      const technicianDiscount =
+        discountAmount *
+        (Number(split.technicianPercentage) / 100);
 
-    /* ================= STATUS ================= */
+      const netAmount =
+        grossSubtotal - discountAmount;
 
-    order.status = "pending-approval";
-    console.log("Order status set to:", order.status);
+      /* ================= TECHNICIAN CUT ================= */
+      /* ✅ Service rate still fully paid */
 
-    /* ================= RE-CALCULATE TOTALS ================= */
-
-    console.log("Calling calculateFinancials...");
-    await this.calculateFinancials(order);
-
-    console.log("Financials after calculation:", {
-      technicianCut: order.technicianCut,
-      companyCut: order.companyCut,
-      netAmount: order.netAmount
-    });
-
-    await order.save();
-
-    console.log("Order saved successfully.");
-    console.log("========== ORDER COMPLETION END ==========");
-
-    return Order.findById(orderId)
-      .populate("company technician");
-
-  } catch (error) {
-    logger.error("Order completion failed", {
-      error: error.message
-    });
-
-    error.statusCode = error.statusCode || 500;
-    throw error;
-  }
-}
-
-
-
-
-
-async calculateFinancials(order) {
-  try {
-    const technician = await Technician.findById(order.technician);
-
-    const serviceRate = Number(technician?.serviceRate) || 0;
-    const miscSharePct = Math.max(
-      0,
-      Math.min(100, Number(technician?.miscShare) || 0)
-    );
-
-    let productTotal = Number(order.installationCharge);
-    let commissionTotal = 0;
-
-    /* ================= PRODUCTS ================= */
-
-    for (const item of order.products || []) {
-
-      const price = Number(item.salePrice) || 0;
-      const qty = Number(item.quantity) || 0;
-
-      // Use frozen sale price
-      productTotal += price * qty;
-
-      // Use frozen commission snapshot
-      commissionTotal += Number(item.techComm) || 0;
-    }
-
-    const fittingCharge = Number(order.fittingCost) || 0;
-    const miscCost = Number(order.miscellaneousCost) || 0;
-
-    const techMiscEarning =
-      miscCost * (miscSharePct / 100);
-
-    const grossSubtotal =
-        productTotal
-      + miscCost
-      + fittingCharge;
-
-    /* ================= DISCOUNT ================= */
-
-    let discountAmount = 0;
-
-    if (order.discount?.type === "percentage") {
-      const pct = Math.max(
-        0,
-        Math.min(100, Number(order.discount.value) || 0)
-      );
-      discountAmount = grossSubtotal * (pct / 100);
-    }
-
-    if (order.discount?.type === "amount") {
-      discountAmount = Math.min(
-        grossSubtotal,
-        Number(order.discount.value) || 0
-      );
-    }
-
-    /* ================= SPLIT ================= */
-
-    const split = order.discountSplit || {
-      ownerPercentage: 100,
-      technicianPercentage: 0
-    };
-
-    const technicianDiscount =
-      discountAmount *
-      (Number(split.technicianPercentage) / 100);
-
-    const netAmount =
-      grossSubtotal - discountAmount;
-
-    /* ================= TECHNICIAN CUT ================= */
-    /* ✅ Service rate still fully paid */
-
-    const technicianCut =
+      const technicianCut =
         serviceRate
-      + commissionTotal
-      + fittingCharge
-      + techMiscEarning
-      - technicianDiscount;
+        + commissionTotal
+        + fittingCharge
+        + techMiscEarning
+        - technicianDiscount;
 
-    /* ================= COMPANY CUT ================= */
+      /* ================= COMPANY CUT ================= */
 
-    const companyCut =
-      netAmount - technicianCut;
+      const companyCut =
+        netAmount - technicianCut;
 
-    /* ================= ASSIGN ================= */
+      /* ================= ASSIGN ================= */
 
-    order.totalAmount = grossSubtotal;   // no service included
-    order.discountAmount = discountAmount;
-    order.netAmount = netAmount;
-    order.technicianCut = technicianCut;
-    order.companyCut = companyCut;
-    order.outstandingAmount = order.companyCut;
+      order.totalAmount = grossSubtotal;   // no service included
+      order.discountAmount = discountAmount;
+      order.netAmount = netAmount;
+      order.technicianCut = technicianCut;
+      order.companyCut = companyCut;
+      order.outstandingAmount = order.companyCut;
 
-    console.log("Service Rate:", serviceRate);
-console.log("Commission Total:", commissionTotal);
-console.log("Misc Share %:", miscSharePct);
-console.log("Tech Misc Earning:", techMiscEarning);
-console.log("Discount Amount:", discountAmount);
-console.log("Discount Split:", split);
-console.log("Technician Discount:", technicianDiscount);
+      console.log("Service Rate:", serviceRate);
+      console.log("Commission Total:", commissionTotal);
+      console.log("Misc Share %:", miscSharePct);
+      console.log("Tech Misc Earning:", techMiscEarning);
+      console.log("Discount Amount:", discountAmount);
+      console.log("Discount Split:", split);
+      console.log("Technician Discount:", technicianDiscount);
 
-  } catch (error) {
-    order.totalAmount = 0;
-    order.discountAmount = 0;
-    order.netAmount = 0;
-    order.technicianCut = 0;
-    order.companyCut = 0;
-    order.outstandingAmount = 0;
+    } catch (error) {
+      order.totalAmount = 0;
+      order.discountAmount = 0;
+      order.netAmount = 0;
+      order.technicianCut = 0;
+      order.companyCut = 0;
+      order.outstandingAmount = 0;
+    }
   }
-}
 
 
 
 
 
-async approveDiscount(orderId, userId, discountSplit) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  async approveDiscount(orderId, userId, discountSplit) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-  try {
-    const order = await Order.findById(orderId).session(session);
+    try {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) throw new Error('Order not found');
+
+      if (order.discountApproved !== 'pending') {
+        throw new Error('Discount already processed');
+      }
+
+      // -------------------------
+      // Validate split
+      // -------------------------
+      if (
+        discountSplit.ownerPercentage +
+        discountSplit.technicianPercentage !== 100
+      ) {
+        throw new Error('Discount split must total 100%');
+      }
+
+      // -------------------------
+      // Apply approval
+      // -------------------------
+      order.discountSplit = discountSplit;
+      order.discountApproved = 'approved';
+      order.discountApprovedBy = userId;
+      order.status = 'completed';
+
+      // -------------------------
+      // Recalculate financials
+      // -------------------------
+      await this.calculateFinancials(order);
+      await order.save({ session });
+
+      // -------------------------
+      // Update technician outstanding
+      // -------------------------
+      await Technician.findByIdAndUpdate(
+        order.technician,
+        {
+          $inc: {
+            outstandingBalance: order.outstandingAmount
+          }
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+      return order;
+
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
+
+
+
+  async rejectDiscount(orderId, userId) {
+    const order = await Order.findById(orderId);
     if (!order) throw new Error('Order not found');
 
     if (order.discountApproved !== 'pending') {
       throw new Error('Discount already processed');
     }
 
-    // -------------------------
-    // Validate split
-    // -------------------------
-    if (
-      discountSplit.ownerPercentage +
-      discountSplit.technicianPercentage !== 100
-    ) {
-      throw new Error('Discount split must total 100%');
-    }
-
-    // -------------------------
-    // Apply approval
-    // -------------------------
-    order.discountSplit = discountSplit;
-    order.discountApproved = 'approved';
+    order.discountApproved = 'rejected';
     order.discountApprovedBy = userId;
-    order.status = 'completed';
 
-    // -------------------------
-    // Recalculate financials
-    // -------------------------
+    // Default split (100% owner absorbs)
+    order.discountSplit = {
+      ownerPercentage: 100,
+      technicianPercentage: 0
+    };
+
+    // Preserve original discount for audit
+    const originalDiscount = { ...order.discount };
+
+    // Temporarily remove discount
+    order.discount = {
+      type: 'percentage',
+      value: 0
+    };
+
     await this.calculateFinancials(order);
-    await order.save({ session });
 
-    // -------------------------
-    // Update technician outstanding
-    // -------------------------
-    await Technician.findByIdAndUpdate(
-      order.technician,
-      {
-        $inc: {
-          outstandingBalance: order.outstandingAmount
-        }
-      },
-      { session }
-    );
+    // Restore original discount (financials already frozen)
+    order.discount = originalDiscount;
 
-    await session.commitTransaction();
+    await order.save();
     return order;
-
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
-}
-
-
-
-async rejectDiscount(orderId, userId) {
-  const order = await Order.findById(orderId);
-  if (!order) throw new Error('Order not found');
-
-  if (order.discountApproved !== 'pending') {
-    throw new Error('Discount already processed');
   }
 
-  order.discountApproved = 'rejected';
-  order.discountApprovedBy = userId;
-
-  // Default split (100% owner absorbs)
-  order.discountSplit = {
-    ownerPercentage: 100,
-    technicianPercentage: 0
-  };
-
-  // Preserve original discount for audit
-  const originalDiscount = { ...order.discount };
-
-  // Temporarily remove discount
-  order.discount = {
-    type: 'percentage',
-    value: 0
-  };
-
-  await this.calculateFinancials(order);
-
-  // Restore original discount (financials already frozen)
-  order.discount = originalDiscount;
-
-  await order.save();
-  return order;
-}
 
 
+  // async getDraftOrders({ skip = 0, limit = 50 } = {}) {
+  //   try {
+  //     const [draftOrders, total] = await Promise.all([
+  //       Order.find()  // Filter by draft status
+  //         .populate('company technician')
+  //         .populate({
+  //           path: 'products.product',   // Correct nested population path
+  //           model: 'Product'            // Ensure this matches your model name
+  //         })
+  //         .sort({ createdAt: -1 })
+  //         .skip(skip)
+  //         .limit(limit)
+  //         .lean(),
+  //       Order.countDocuments()  // Count only drafts
+  //     ]);
 
-// async getDraftOrders({ skip = 0, limit = 50 } = {}) {
-//   try {
-//     const [draftOrders, total] = await Promise.all([
-//       Order.find()  // Filter by draft status
-//         .populate('company technician')
-//         .populate({
-//           path: 'products.product',   // Correct nested population path
-//           model: 'Product'            // Ensure this matches your model name
-//         })
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(limit)
-//         .lean(),
-//       Order.countDocuments()  // Count only drafts
-//     ]);
-    
-//     return { draftOrders, total, skip, limit };
-//   } catch (error) {
-//     logger.error('Error fetching draft orders:', error);
-//     throw new Error('Failed to retrieve draft orders');
-//   }
-// }
+  //     return { draftOrders, total, skip, limit };
+  //   } catch (error) {
+  //     logger.error('Error fetching draft orders:', error);
+  //     throw new Error('Failed to retrieve draft orders');
+  //   }
+  // }
 
-async getDraftOrders({ skip = 0, limit = 50, search } = {}) {
-  try {
-    const filter = {};
+  async getDraftOrders({ skip = 0, limit = 50, search } = {}) {
+    try {
+      const filter = {};
 
-    // If draft status exists, add it here
-    // filter.status = 'DRAFT';
+      // If draft status exists, add it here
+      // filter.status = 'DRAFT';
 
-    // 🔍 Search by TCRNumber
-    if (search) {
-      filter.TCRNumber = { $regex: search, $options: 'i' }; 
-      // case-insensitive partial match
+      // 🔍 Search by TCRNumber
+      if (search) {
+        filter.TCRNumber = { $regex: search, $options: 'i' };
+        // case-insensitive partial match
+      }
+
+      const [draftOrders, total] = await Promise.all([
+        Order.find(filter)
+          .populate('company technician')
+          .populate({
+            path: 'products.product',
+            model: 'Product'
+          })
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+
+        Order.countDocuments(filter)
+      ]);
+
+      return { draftOrders, total, skip, limit };
+
+    } catch (error) {
+      logger.error('Error fetching draft orders:', error);
+      throw new Error('Failed to retrieve draft orders');
     }
+  }
 
-    const [draftOrders, total] = await Promise.all([
-      Order.find(filter)
+  async exportOrders({ startDate, endDate }) {
+    try {
+      if (!startDate || !endDate) {
+        throw new Error("Start date and end date are required for export");
+      }
+
+      const filter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+        }
+      };
+
+      const orders = await Order.find(filter)
         .populate('company technician')
         .populate({
           path: 'products.product',
           model: 'Product'
         })
         .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+        .lean();
 
-      Order.countDocuments(filter)
-    ]);
+      return orders;
 
-    return { draftOrders, total, skip, limit };
-
-  } catch (error) {
-    logger.error('Error fetching draft orders:', error);
-    throw new Error('Failed to retrieve draft orders');
-  }
-}
-
-async exportOrders({ startDate, endDate }) {
-  try {
-    if (!startDate || !endDate) {
-      throw new Error("Start date and end date are required for export");
+    } catch (error) {
+      logger.error('Error exporting orders:', error);
+      throw new Error('Failed to export orders');
     }
+  }
 
-    const filter = {
-      createdAt: {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+
+  async deleteOrderById(orderId, userId) {
+    try {
+      const order = await Order.findById(orderId);
+
+      if (!order) {
+        throw new Error('Order not found');
       }
-    };
 
-    const orders = await Order.find(filter)
-      .populate('company technician')
-      .populate({
-        path: 'products.product',
-        model: 'Product'
-      })
-      .sort({ createdAt: -1 })
-      .lean();
+      // Optional: Add business rules check here
+      // Example: Prevent deleting completed orders
+      // if (order.status === 'completed') {
+      //   throw new Error('Completed orders cannot be deleted');
+      // }
 
-    return orders;
+      await Order.findByIdAndDelete(orderId);
 
-  } catch (error) {
-    logger.error('Error exporting orders:', error);
-    throw new Error('Failed to export orders');
-  }
-}
+      logger.info('Order deleted successfully', {
+        orderId,
+        deletedBy: userId
+      });
 
+      return {
+        message: 'Order deleted successfully'
+      };
+    } catch (error) {
+      logger.error('Failed to delete order', {
+        error: error.message,
+        orderId,
+        deletedBy: userId
+      });
 
-async deleteOrderById(orderId, userId) {
-  try {
-    const order = await Order.findById(orderId);
-
-    if (!order) {
-      throw new Error('Order not found');
+      throw error;
     }
-
-    // Optional: Add business rules check here
-    // Example: Prevent deleting completed orders
-    // if (order.status === 'completed') {
-    //   throw new Error('Completed orders cannot be deleted');
-    // }
-
-    await Order.findByIdAndDelete(orderId);
-
-    logger.info('Order deleted successfully', {
-      orderId,
-      deletedBy: userId
-    });
-
-    return {
-      message: 'Order deleted successfully'
-    };
-  } catch (error) {
-    logger.error('Failed to delete order', {
-      error: error.message,
-      orderId,
-      deletedBy: userId
-    });
-
-    throw error;
   }
-}
 
 }
 

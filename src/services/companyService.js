@@ -1,5 +1,5 @@
 const Company = require('../models/Company');
-const  logger  = require('../utils/logger');
+const logger = require('../utils/logger');
 
 // Create company
 const createCompany = async (companyData) => {
@@ -16,27 +16,32 @@ const createCompany = async (companyData) => {
 // Get all companies with technician count
 const getCompanies = async (queryParams = {}) => {
   try {
-    const { page = 1, limit = 10 } = queryParams;
-    
-    const companies = await Company.find()
+    const { page = 1, limit = 10, search } = queryParams;
+    const filter = {};
+
+    if (search) {
+      filter.name = { $regex: search, $options: 'i' };
+    }
+
+    const companies = await Company.find(filter)
       .sort('-createdAt')
-      .skip((page - 1) * limit)
+      .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
       .lean();
 
-    const total = await Company.countDocuments();
+    const total = await Company.countDocuments(filter);
 
     logger.debug('Companies fetched', { count: companies.length });
-    
+
     return {
       success: true,
-      count: companies.length,
+      data: companies,
       pagination: {
+        total,
         page: Number(page),
         limit: Number(limit),
-        totalPages: Math.ceil(total / limit)
-      },
-      data: companies
+        totalPages: Math.ceil(total / Number(limit))
+      }
     };
   } catch (error) {
     logger.error('Failed to fetch companies', { error: error.message });
@@ -86,8 +91,8 @@ const deleteCompany = async (companyId) => {
 };
 
 module.exports = {
-    createCompany,
-    getCompanies,
-    updateCompany,
-    deleteCompany
-  };
+  createCompany,
+  getCompanies,
+  updateCompany,
+  deleteCompany
+};
