@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const logger  = require('../utils/logger');
+const logger = require('../utils/logger');
 const sendEmail = require('../utils/sendEmail');
 const { default: AppError } = require('../utils/error-handler');
 
@@ -14,7 +14,7 @@ class AuthService {
       });
 
       const user = await User.create(userData);
-      
+
       logger.info('User registered successfully', {
         userId: user._id,
         email: user.email
@@ -130,27 +130,36 @@ class AuthService {
 
   async getUsers(queryParams) {
     try {
-      const { page = 1, limit = 25, ...filters } = queryParams;
-      const skip = (page - 1) * limit;
+      const { page = 1, limit = 25, search, ...filters } = queryParams;
+      const filter = { ...filters };
 
-      const query = User.find(filters)
+      if (search) {
+        filter.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      const skip = (Number(page) - 1) * Number(limit);
+
+      const query = User.find(filter)
         .skip(skip)
-        .limit(limit)
+        .limit(Number(limit))
         .sort('-createdAt')
         .select('-password');
 
       const [users, total] = await Promise.all([
         query.exec(),
-        User.countDocuments(filters)
+        User.countDocuments(filter)
       ]);
 
       return {
         data: users,
         pagination: {
+          total,
           page: Number(page),
           limit: Number(limit),
-          total,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / Number(limit))
         }
       };
     } catch (error) {
@@ -161,7 +170,7 @@ class AuthService {
 
   async getUserById(userId) {
     try {
-      const user  = await User.findById(
+      const user = await User.findById(
         userId
       );
 
@@ -193,8 +202,8 @@ class AuthService {
       const updatedUser = await User.findByIdAndUpdate(
         userId,
         { $set: updateData },
-        { 
-          new: true, 
+        {
+          new: true,
           runValidators: true,
           context: 'query'
         }
@@ -203,21 +212,21 @@ class AuthService {
       logger.info('User updated successfully', { userId });
       return updatedUser;
     } catch (error) {
-      logger.error('User update failed', { 
-        error: error.message, 
-        userId 
+      logger.error('User update failed', {
+        error: error.message,
+        userId
       });
-      
+
       // Handle duplicate key errors (like email)
       if (error.code === 11000) {
         throw new AppError('Email already exists', 400);
       }
-      
+
       // Handle validation errors
       if (error.name === 'ValidationError') {
         throw new AppError(`Invalid input: ${Object.values(error.errors).map(e => e.message).join(', ')}`, 400);
       }
-      
+
       throw error;
     }
   }

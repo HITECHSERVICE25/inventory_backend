@@ -6,14 +6,15 @@ const technicianSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Name is required'],
     trim: true,
-    maxlength: [100, 'Name cannot exceed 100 characters']
+    maxlength: [100, 'Name cannot exceed 100 characters'],
+    index: true
   },
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
     unique: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^[6-9]\d{9}$/.test(v);
       },
       message: 'Invalid Indian phone number'
@@ -36,7 +37,7 @@ const technicianSchema = new mongoose.Schema({
     required: true,
     unique: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^\d{12}$/.test(v);
       },
       message: 'Invalid Aadhaar number'
@@ -47,7 +48,7 @@ const technicianSchema = new mongoose.Schema({
     required: true,
     unique: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v);
       },
       message: 'Invalid PAN number'
@@ -69,7 +70,7 @@ const technicianSchema = new mongoose.Schema({
   miscShare: { type: Number, default: 0 },
   outstandingBalance: { type: Number, default: 0 },
   dueFromDiscounts: { type: Number, default: 0 }
-}, {timestamps: true});
+}, { timestamps: true });
 
 
 module.exports = mongoose.model('Technician', technicianSchema);

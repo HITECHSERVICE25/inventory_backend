@@ -4,7 +4,7 @@ const technicianService = require('../services/technicianService');
 exports.createCommission = async (req, res, next) => {
   try {
     const { technicianId, productId, amount } = req.body;
-    
+
     // Validate required fields
     if (!technicianId || !productId || !amount) {
       throw new Error('Technician ID, Product ID, and Amount are required');
@@ -15,7 +15,7 @@ exports.createCommission = async (req, res, next) => {
       productId,
       amount
     );
-    
+
     res.status(201).json({
       success: true,
       data: agreement,
@@ -42,7 +42,7 @@ exports.updateCommission = async (req, res, next) => {
       productId,
       amount
     );
-    
+
     res.status(200).json({
       success: true,
       data: updatedAgreement,
@@ -55,11 +55,11 @@ exports.updateCommission = async (req, res, next) => {
 
 exports.getCommissions = async (req, res, next) => {
   try {
-    const { page, limit, sort } = req.query;
+    const { page, limit, sort, search } = req.query;
 
     const commissions = await technicianService.listCommissions(
       {}, // filter (empty for now)
-      { page, limit, sort } // options
+      { page, limit, sort, search } // options
     );
 
     res.status(200).json({ success: true, data: commissions });
