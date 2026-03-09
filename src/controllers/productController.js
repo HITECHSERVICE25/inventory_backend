@@ -29,6 +29,18 @@ exports.updateProduct = async (req, res, next) => {
 
 exports.deleteProduct = async (req, res, next) => {
   try {
+    const Order = require('../models/Order');
+
+    // Check if product is in any order
+    const orderExists = await Order.findOne({ 'products.product': req.params.id });
+
+    if (orderExists) {
+      return res.status(409).json({
+        success: false,
+        message: "Cannot delete product because it is associated with existing orders."
+      });
+    }
+
     await productService.deleteProduct(req.params.id);
     res.status(200).json({ success: true, data: {} });
   } catch (error) {

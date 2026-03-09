@@ -40,7 +40,6 @@ app.use('/api/v1/products', require('./routes/productRoutes'));
 app.use('/api/v1/technicians', require('./routes/technicianRoutes'));
 app.use('/api/v1/commissions', require('./routes/commissionRoutes'));
 app.use('/api/v1/inventory', require('./routes/allocationRoutes'));
-app.use('/api/v1/installation', require('./routes/installationRoutes'));
 app.use('/api/v1/orders', require('./routes/orderRoutes'));
 app.use('/api/v1/payments', require('./routes/paymentRoutes'));
 

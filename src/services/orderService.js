@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const Order = require('../models/Order');
-const InstallationCharge = require('../models/InstallationCharge');
 const Product = require('../models/Product');
 const CommissionAgreement = require("../models/CommissionAgreement");
 
