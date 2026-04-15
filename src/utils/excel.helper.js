@@ -265,7 +265,7 @@ async function generateOrdersExcel(orders) {
         // PRODUCT LEVEL (safe handling)
         product_name: item?.product?.name || "",
         unitOfMeasure: item?.product?.unitOfMeasure || "",
-        price: item?.product?.price || "",
+        price: item?.basePrice || "",
         quantity: item?.quantity || ""
       });
     });
