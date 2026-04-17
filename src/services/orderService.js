@@ -509,6 +509,18 @@ class OrderService {
     // Restore original discount (financials already frozen)
     order.discount = originalDiscount;
 
+    // -------------------------
+      // Update technician outstanding
+      // -------------------------
+      await Technician.findByIdAndUpdate(
+        order.technician,
+        {
+          $inc: {
+            outstandingBalance: order.outstandingAmount
+          }
+        }
+      );
+
     await order.save();
     return order;
   }
