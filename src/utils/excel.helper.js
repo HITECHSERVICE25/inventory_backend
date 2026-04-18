@@ -210,11 +210,11 @@ async function generateOrdersExcel(orders) {
   worksheet.getColumn("completionDate").numFmt = "dd-mm-yyyy";
 
   orders.forEach(order => {
-  
-  
+
+
     const products = order.products && order.products.length > 0
-  ? order.products
-  : [null]; // fallback row
+      ? order.products
+      : [null]; // fallback row
 
     products.forEach(item => {
       worksheet.addRow({
@@ -232,8 +232,8 @@ async function generateOrdersExcel(orders) {
         tech_name: order.technician?.name,
         tech_phone: order.technician?.phone,
         tech_email: order.technician?.email,
-        tech_serviceRate: order.technician?.serviceRate,
-        tech_miscShare: order.technician?.miscShare,
+        tech_serviceRate: order.technicianServiceRate !== undefined ? order.technicianServiceRate : order.technician?.serviceRate,
+        tech_miscShare: order.technicianMiscShare !== undefined ? order.technicianMiscShare : order.technician?.miscShare,
 
         cust_name: order.customer?.name,
         cust_phone: order.customer?.contact?.phone,
@@ -298,7 +298,7 @@ async function generateAllocationsExcel(allocations) {
 
     // ALLOCATION
     { header: "Quantity Allocated", key: "quantity", width: 18 },
-  
+
   ];
 
   // Date formatting
@@ -399,54 +399,54 @@ module.exports = { generateOrdersExcel, generateAllocationsExcel, generatePaymen
 
 
 // (order.products || []).forEach(item => {
-    //   worksheet.addRow({
-    //     order_id: order._id,
-    //     TCRNumber: order.TCRNumber,
-    //     status: order.status,
-    //     createdAt: order.createdAt,
-    //     completionDate: order.completionDate,
-    //     remarks: order.remarks,
+//   worksheet.addRow({
+//     order_id: order._id,
+//     TCRNumber: order.TCRNumber,
+//     status: order.status,
+//     createdAt: order.createdAt,
+//     completionDate: order.completionDate,
+//     remarks: order.remarks,
 
-    //     company_id: order.company?._id,
-    //     company_name: order.company?.name,
-    //     company_install_charge: order.company?.installationCharge,
+//     company_id: order.company?._id,
+//     company_name: order.company?.name,
+//     company_install_charge: order.company?.installationCharge,
 
-    //     tech_name: order.technician?.name,
-    //     tech_phone: order.technician?.phone,
-    //     tech_email: order.technician?.email,
-    //     tech_serviceRate: order.technician?.serviceRate,
-    //     tech_miscShare: order.technician?.miscShare,
+//     tech_name: order.technician?.name,
+//     tech_phone: order.technician?.phone,
+//     tech_email: order.technician?.email,
+//     tech_serviceRate: order.technician?.serviceRate,
+//     tech_miscShare: order.technician?.miscShare,
 
-    //     cust_name: order.customer?.name,
-    //     cust_phone: order.customer?.contact?.phone,
-    //     cust_altPhone: order.customer?.contact?.alternatePhone,
-    //     cust_street: order.customer?.address?.street,
-    //     cust_city: order.customer?.address?.city,
-    //     cust_state: order.customer?.address?.state,
-    //     cust_pincode: order.customer?.address?.pincode,
+//     cust_name: order.customer?.name,
+//     cust_phone: order.customer?.contact?.phone,
+//     cust_altPhone: order.customer?.contact?.alternatePhone,
+//     cust_street: order.customer?.address?.street,
+//     cust_city: order.customer?.address?.city,
+//     cust_state: order.customer?.address?.state,
+//     cust_pincode: order.customer?.address?.pincode,
 
-    //     installationCharge: order.installationCharge,
-    //     freeInstallation: order.freeInstallation,
-    //     fittingCost: order.fittingCost,
-    //     miscCost: order.miscellaneousCost,
+//     installationCharge: order.installationCharge,
+//     freeInstallation: order.freeInstallation,
+//     fittingCost: order.fittingCost,
+//     miscCost: order.miscellaneousCost,
 
-    //     discountType: order.discount?.type,
-    //     discountValue: order.discount?.value,
-    //     discountAmount: order.discountAmount,
-    //     discountApproved: order.discountApproved,
-    //     discountApprovedBy: order.discountApprovedBy,
-    //     discountOwner: order.discountSplit?.ownerPercentage,
-    //     discountTech: order.discountSplit?.technicianPercentage,
+//     discountType: order.discount?.type,
+//     discountValue: order.discount?.value,
+//     discountAmount: order.discountAmount,
+//     discountApproved: order.discountApproved,
+//     discountApprovedBy: order.discountApprovedBy,
+//     discountOwner: order.discountSplit?.ownerPercentage,
+//     discountTech: order.discountSplit?.technicianPercentage,
 
-    //     totalAmount: order.totalAmount,
-    //     netAmount: order.netAmount,
-    //     technicianCut: order.technicianCut,
-    //     companyCut: order.companyCut,
-    //     outstandingAmount: order.outstandingAmount,
+//     totalAmount: order.totalAmount,
+//     netAmount: order.netAmount,
+//     technicianCut: order.technicianCut,
+//     companyCut: order.companyCut,
+//     outstandingAmount: order.outstandingAmount,
 
-    //     product_name: item.product?.name,
-    //     unitOfMeasure: item.product?.unitOfMeasure,
-    //     price: item.product.price,
-    //     quantity: item.quantity
-    //   });
-    // });
+//     product_name: item.product?.name,
+//     unitOfMeasure: item.product?.unitOfMeasure,
+//     price: item.product.price,
+//     quantity: item.quantity
+//   });
+// });

@@ -13,6 +13,9 @@ class OrderService {
     try {
 
       let installationCharge;
+      let technicianServiceRate = 0;
+      let technicianMiscShare = 0;
+
       if (orderData?.freeInstallation) {
         installationCharge = 0;
       } else {
@@ -20,10 +23,21 @@ class OrderService {
         installationCharge = company.installationCharge;
       }
 
+      // Snapshot Technician Rates
+      if (orderData.technician) {
+        const technician = await Technician.findById(orderData.technician);
+        if (technician) {
+          technicianServiceRate = technician.serviceRate || 0;
+          technicianMiscShare = technician.miscShare || 0;
+        }
+      }
+
       console.log("orderData:", orderData);
       const order = await Order.create({
         ...orderData,
         installationCharge: installationCharge,
+        technicianServiceRate,
+        technicianMiscShare,
         status: 'draft',
         customer: {
           name: orderData.customer.name,
@@ -90,7 +104,18 @@ class OrderService {
       // 2. Update core order fields
       if (orderData.TCRNumber !== undefined) order.TCRNumber = orderData.TCRNumber;
       if (orderData.company !== undefined) order.company = orderData.company;
-      if (orderData.technician !== undefined) order.technician = orderData.technician;
+
+      if (orderData.technician !== undefined) {
+        // If technician changed, re-snapshot rates
+        if (order.technician?.toString() !== orderData.technician?.toString()) {
+          const technician = await Technician.findById(orderData.technician);
+          if (technician) {
+            order.technicianServiceRate = technician.serviceRate || 0;
+            order.technicianMiscShare = technician.miscShare || 0;
+          }
+        }
+        order.technician = orderData.technician;
+      }
 
       // 3. Update customer information (full nested update)
       if (orderData.customer) {
@@ -303,11 +328,14 @@ class OrderService {
     try {
       const technician = await Technician.findById(order.technician);
 
-      const serviceRate = Number(technician?.serviceRate) || 0;
-      const miscSharePct = Math.max(
-        0,
-        Math.min(100, Number(technician?.miscShare) || 0)
-      );
+      // Use snapshotted rates if available, otherwise fallback to current technician rates (for legacy orders)
+      const serviceRate = order.technicianServiceRate !== undefined
+        ? order.technicianServiceRate
+        : (Number(technician?.serviceRate) || 0);
+
+      const miscSharePct = order.technicianMiscShare !== undefined
+        ? order.technicianMiscShare
+        : Math.max(0, Math.min(100, Number(technician?.miscShare) || 0));
 
       let productTotal = Number(order.installationCharge);
       let commissionTotal = 0;
@@ -510,16 +538,16 @@ class OrderService {
     order.discount = originalDiscount;
 
     // -------------------------
-      // Update technician outstanding
-      // -------------------------
-      await Technician.findByIdAndUpdate(
-        order.technician,
-        {
-          $inc: {
-            outstandingBalance: order.outstandingAmount
-          }
+    // Update technician outstanding
+    // -------------------------
+    await Technician.findByIdAndUpdate(
+      order.technician,
+      {
+        $inc: {
+          outstandingBalance: order.outstandingAmount
         }
-      );
+      }
+    );
 
     await order.save();
     return order;
@@ -618,30 +646,53 @@ class OrderService {
 
 
   async deleteOrderById(orderId, userId) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-      const order = await Order.findById(orderId);
+      const order = await Order.findById(orderId).session(session);
 
       if (!order) {
         throw new Error('Order not found');
       }
 
-      // Optional: Add business rules check here
-      // Example: Prevent deleting completed orders
-      // if (order.status === 'completed') {
-      //   throw new Error('Completed orders cannot be deleted');
-      // }
+      // 1. If the order contributed to technician outstanding, we must reverse it
+      // This applies to 'completed' status, or when a discount was already approved/rejected
+      const alreadyContributedBalance =
+        order.status === 'completed' ||
+        ['approved', 'rejected'].includes(order.discountApproved);
 
-      await Order.findByIdAndDelete(orderId);
+      if (alreadyContributedBalance && order.technician && order.outstandingAmount) {
+        await Technician.findByIdAndUpdate(
+          order.technician,
+          {
+            $inc: {
+              outstandingBalance: -order.outstandingAmount
+            }
+          },
+          { session }
+        );
+        logger.info('Technician balance reversed due to order deletion', {
+          orderId,
+          technicianId: order.technician,
+          reversalAmount: order.outstandingAmount
+        });
+      }
+
+      await Order.findByIdAndDelete(orderId).session(session);
+
+      await session.commitTransaction();
 
       logger.info('Order deleted successfully', {
         orderId,
-        deletedBy: userId
+        deletedBy: userId,
+        balanceAdjusted: alreadyContributedBalance
       });
 
       return {
         message: 'Order deleted successfully'
       };
     } catch (error) {
+      await session.abortTransaction();
       logger.error('Failed to delete order', {
         error: error.message,
         orderId,
@@ -649,6 +700,8 @@ class OrderService {
       });
 
       throw error;
+    } finally {
+      session.endSession();
     }
   }
 
