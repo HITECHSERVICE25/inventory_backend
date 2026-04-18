@@ -6,17 +6,17 @@ const orderSchema = new mongoose.Schema({
   orderDate: { type: Date, default: Date.now },
   completionDate: Date,
   remarks: String,
-  
+
   // Relationships
   company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'Technician', required: true },
-  
+
   // Financials
   installationCharge: Number,
-  freeInstallation: {type: Boolean, default: 0},
+  freeInstallation: { type: Boolean, default: 0 },
   miscellaneousCost: { type: Number, default: 0 },
   fittingCost: { type: Number, default: 0 },
-    discount: {
+  discount: {
     type: {
       type: String,
       enum: ['percentage', 'amount'],
@@ -29,14 +29,14 @@ const orderSchema = new mongoose.Schema({
     }
   },
 
-  discountApproved: { 
+  discountApproved: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
     default: 'pending'
   },
   discountSplit: {
-    ownerPercentage: { 
-      type: Number, 
+    ownerPercentage: {
+      type: Number,
       default: 100,
       min: 0,
       max: 100
@@ -49,7 +49,7 @@ const orderSchema = new mongoose.Schema({
     }
   },
   discountApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  
+
   // Products
   products: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
@@ -58,14 +58,18 @@ const orderSchema = new mongoose.Schema({
     salePrice: Number,
     techComm: Number
   }],
-  
+
+  // Snapshotted Technician Rates
+  technicianServiceRate: Number,
+  technicianMiscShare: Number,
+
   // Calculated Fields
   totalAmount: Number,
   netAmount: Number,
   technicianCut: Number,
   companyCut: Number,
   outstandingAmount: Number,
-  
+
   // Status
   status: {
     type: String,
