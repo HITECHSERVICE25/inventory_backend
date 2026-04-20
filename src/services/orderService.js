@@ -431,12 +431,15 @@ class OrderService {
       console.log("Technician Discount:", technicianDiscount);
 
     } catch (error) {
-      order.totalAmount = 0;
-      order.discountAmount = 0;
-      order.netAmount = 0;
-      order.technicianCut = 0;
-      order.companyCut = 0;
-      order.outstandingAmount = 0;
+      // RC1 FIX: Do NOT silently zero-out financials. Log and re-throw so the
+      // caller (approveDiscount / rejectDiscount) can abort the transaction and
+      // the technician balance is never touched with a corrupted value.
+      logger.error('calculateFinancials failed', {
+        orderId: order._id,
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
     }
   }
 
@@ -478,6 +481,13 @@ class OrderService {
       // Recalculate financials
       // -------------------------
       await this.calculateFinancials(order);
+
+      // RC3 FIX: Pin the calculated value into a local const BEFORE saving.
+      // This guarantees the amount persisted to the order document and the
+      // amount incremented on the technician are identical — even if a
+      // subsequent read of order.outstandingAmount were to differ.
+      const outstandingToAdd = order.outstandingAmount;
+
       await order.save({ session });
 
       // -------------------------
@@ -487,7 +497,7 @@ class OrderService {
         order.technician,
         {
           $inc: {
-            outstandingBalance: order.outstandingAmount
+            outstandingBalance: outstandingToAdd
           }
         },
         { session }
@@ -507,50 +517,70 @@ class OrderService {
 
 
   async rejectDiscount(orderId, userId) {
-    const order = await Order.findById(orderId);
-    if (!order) throw new Error('Order not found');
+    // RC2 FIX: Wrap in a session/transaction so the technician balance update
+    // and the order save are atomic — matching the pattern used by approveDiscount.
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if (order.discountApproved !== 'pending') {
-      throw new Error('Discount already processed');
-    }
+    try {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) throw new Error('Order not found');
 
-    order.discountApproved = 'rejected';
-    order.discountApprovedBy = userId;
-
-    // Default split (100% owner absorbs)
-    order.discountSplit = {
-      ownerPercentage: 100,
-      technicianPercentage: 0
-    };
-
-    // Preserve original discount for audit
-    const originalDiscount = { ...order.discount };
-
-    // Temporarily remove discount
-    order.discount = {
-      type: 'percentage',
-      value: 0
-    };
-
-    await this.calculateFinancials(order);
-
-    // Restore original discount (financials already frozen)
-    order.discount = originalDiscount;
-
-    // -------------------------
-    // Update technician outstanding
-    // -------------------------
-    await Technician.findByIdAndUpdate(
-      order.technician,
-      {
-        $inc: {
-          outstandingBalance: order.outstandingAmount
-        }
+      if (order.discountApproved !== 'pending') {
+        throw new Error('Discount already processed');
       }
-    );
 
-    await order.save();
-    return order;
+      order.discountApproved = 'rejected';
+      order.discountApprovedBy = userId;
+
+      // Default split (100% owner absorbs)
+      order.discountSplit = {
+        ownerPercentage: 100,
+        technicianPercentage: 0
+      };
+
+      // Preserve original discount for audit
+      const originalDiscount = { ...order.discount };
+
+      // Temporarily remove discount so financials reflect zero-discount scenario
+      order.discount = {
+        type: 'percentage',
+        value: 0
+      };
+
+      await this.calculateFinancials(order);
+
+      // RC3 FIX: Pin the value before saving so the order doc and technician
+      // increment are guaranteed to match.
+      const outstandingToAdd = order.outstandingAmount;
+
+      // Restore original discount for audit trail (financials already frozen)
+      order.discount = originalDiscount;
+      order.status = 'completed';
+
+      await order.save({ session });
+
+      // -------------------------
+      // Update technician outstanding
+      // -------------------------
+      await Technician.findByIdAndUpdate(
+        order.technician,
+        {
+          $inc: {
+            outstandingBalance: outstandingToAdd
+          }
+        },
+        { session }
+      );
+
+      await session.commitTransaction();
+      return order;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
 
